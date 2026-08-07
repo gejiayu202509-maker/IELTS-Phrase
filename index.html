@@ -23,11 +23,11 @@
 <body><main class="wrap">
 <section class="hero"><div class="eyebrow">IELTS WRITING PHRASE SYSTEM · PWA</div><h1>雅思大作文短语<br>学习与测试系统</h1><p>学习、背诵、测试整合在同一个应用里。电脑、iPad、安卓平板和手机都可直接打开；首次加载后支持离线使用。</p><div class="stats"><span class="chip">20 个核心话题</span><span class="chip">600 条短语 / 搭配</span><span class="chip">可添加到主屏幕 · 支持离线</span></div><div class="installbar"><button id="installBtn" class="installbtn">＋ 添加到主屏幕 / 安装应用</button><span id="installState" class="installstate">首次打开后可离线使用</span></div></section>
 <section class="grid">
-<article class="card"><div class="icon">学</div><h2>学习短语库</h2><p>按照原文档的 20 个话题分类浏览和记忆，可自由切换中英显示方式，并记录自己的掌握进度。</p><div class="features"><span>中英对照 / 只看中文 / 只看英文</span><span>按模块学习、搜索、随机顺序</span><span>标记已掌握，本机自动保存进度</span><span>需要时即时生成 Word 版下载</span></div><a class="btn" href="learn.html"><span>进入学习中心</span><span>→</span></a></article>
-<article class="card test"><div class="icon">测</div><h2>背诵检查器</h2><p>保留你已经确认满意的原版测试网页，不改它的题库、判断逻辑、界面和操作方式。</p><div class="features"><span>自由组合测试模块</span><span>中文提示 → 英文短语默写</span><span>造句应用与离线基础语法检查</span><span>错题重做与测试记录</span></div><a class="btn" href="test.html"><span>进入测试中心</span><span>→</span></a></article>
+<article class="card"><div class="icon">学</div><h2>学习短语库</h2><p>按照原文档的 20 个话题分类浏览和记忆，可自由切换中英显示方式，并记录自己的掌握进度。</p><div class="features"><span>中英对照 / 只看中文 / 只看英文</span><span>按模块学习、搜索、随机顺序</span><span>标记已掌握；登录后跨设备同步进度</span><span>需要时即时生成 Word 版下载</span></div><a class="btn" href="learn.html"><span>进入学习中心</span><span>→</span></a></article>
+<article class="card test"><div class="icon">测</div><h2>背诵检查器</h2><p>保留你已经确认满意的原版测试网页，不改它的题库、判断逻辑、界面和操作方式。</p><div class="features"><span>自由组合测试模块</span><span>中文提示 → 英文短语默写</span><span>造句应用与离线基础语法检查</span><span>测试历史、错题复习进度与账号同步</span></div><a class="btn" href="test.html"><span>进入测试中心</span><span>→</span></a></article>
 </section>
 <div class="note">直接把这个网址发给老师或学生即可。iPad / iPhone 用 Safari 打开后，可点“添加到主屏幕”；安卓和电脑浏览器也可安装为应用。</div>
-<div class="foot">PWA 版 · 学习数据和测试记录只保存在当前设备浏览器中</div>
+<div class="foot">PWA v6 · 未登录时本机保存；登录后通过 Supabase 安全同步到同一账号的其他设备</div>
 </main>
 <div id="installHint" class="installhint"><div class="hintcard"><h3 id="hintTitle">安装雅思短语</h3><p id="hintIntro"></p><div id="hintSteps" class="hintsteps"></div><div id="hintMeta" class="hintmeta"></div><button id="closeHint" class="closehint">知道了</button></div></div>
 <script>
@@ -153,5 +153,6 @@
 })();
 </script>
 
+<script src="./cloud.js"></script>
 <script src="./pwa-update.js"></script>
 </body></html>
