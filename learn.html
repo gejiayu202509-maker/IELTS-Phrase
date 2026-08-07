@@ -18,7 +18,8 @@
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head>
-<body><main class="wrap">
+<body>
+<script src="./cloud.js"></script><main class="wrap">
 <nav class="topnav"><div class="navlinks"><a class="navbtn" href="index.html">← 首页</a><a class="navbtn" href="test.html">去测试</a></div><button class="navbtn primary" id="downloadWord">下载 Word 版</button></nav>
 <header class="hero"><div><div class="eyebrow">STUDY CENTER · CLOUD SYNC</div><h1>雅思大作文短语学习中心</h1><p>按照原短语库分类学习。选择话题后，可切换显示方式、随机顺序、标记掌握状态，也可以用闪卡集中记忆。登录后会自动同步到其他设备。</p></div><div class="progressCard"><div class="progressMeta"><span>总掌握进度</span><b id="overallText">0 / 600</b></div><div class="track"><div class="bar" id="overallBar"></div></div></div></header>
 <section class="layout">
@@ -69,6 +70,5 @@ window.addEventListener('ielts-auth-change',()=>{M=mastered();render()});window.
 renderModules();render();
 })();
 </script>
-<script src="./cloud.js"></script>
 <script src="./pwa-update.js"></script>
 </body></html>

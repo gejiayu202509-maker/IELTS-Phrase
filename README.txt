@@ -1,4 +1,4 @@
-IELTS Phrase PWA v7 · 账号与云同步版
+IELTS Phrase · 账号与云同步版
 
 本版新增：
 1. Supabase 邮箱+密码账号；昵称用于界面显示。
@@ -20,7 +20,7 @@ git commit -m "Add Supabase accounts and linked wrong-answer review"
 git push
 
 
-v7 账号入口与邮箱确认修复：
+本次更新：
 - 未登录首次进入：全屏选择 登录 / 注册 / 游客模式。
 - 游客模式仅本次浏览会话跳过入口；关闭后下次未登录会再次选择。
 - 注册确认邮件固定回跳到 GitHub Pages 首页，避免 Supabase 默认地址导致 404。

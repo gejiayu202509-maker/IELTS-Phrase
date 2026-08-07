@@ -39,8 +39,8 @@
   function deletedMasteredKey(){return user?`ieltsPhraseDeletedMastered:${user.id}`:'ieltsPhraseDeletedMastered'}
   function clearMasteredKey(){return user?`ieltsPhraseClearMastered:${user.id}`:'ieltsPhraseClearMastered'}
   function profileName(){return profile&&profile.nickname || user&&user.email&&user.email.split('@')[0] || '已登录'}
-  function guestChosen(){return sessionStorage.getItem('ieltsGuestSessionV7')==='1'}
-  function setGuest(v){if(v)sessionStorage.setItem('ieltsGuestSessionV7','1');else sessionStorage.removeItem('ieltsGuestSessionV7')}
+  function guestChosen(){return sessionStorage.getItem('ieltsGuestSessionV8')==='1'}
+  function setGuest(v){if(v)sessionStorage.setItem('ieltsGuestSessionV8','1');else sessionStorage.removeItem('ieltsGuestSessionV8')}
 
   function injectStyles(){
     if(document.getElementById('cloudStyles'))return;
@@ -161,6 +161,12 @@
       emit('ielts-cloud-sync',{signedIn:true,manual,history:visible.length,mastered:(mastered||[]).length});
     }catch(e){console.warn('Cloud sync failed',e);emit('ielts-cloud-error',{error:e})}finally{loading=false;updateUI()}
   }
+
+  // v8: an old v7 guest-session marker must not bypass the new entry screen.
+  try{sessionStorage.removeItem('ieltsGuestSessionV7')}catch(_){}
+
+  // Render the entry gate as early as possible, before waiting for Supabase or the rest of the page.
+  if(document.body){injectUI();updateGate()}
 
   async function init(){
     injectUI();
