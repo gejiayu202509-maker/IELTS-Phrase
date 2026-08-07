@@ -30,3 +30,6 @@ git push
 Supabase Authentication → URL Configuration 请确保：
 Site URL: https://gejiayu202509-maker.github.io/IELTS-Phrase/
 Redirect URLs 中也包含同一个完整地址。
+
+
+v9 修复：历史记录删除采用本地 tombstone + 云端确认机制，避免同步竞争把已删除记录重新拉回。
