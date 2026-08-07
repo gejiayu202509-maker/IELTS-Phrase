@@ -14,3 +14,11 @@ iPad/iPhone：Safari → 分享 → 添加到主屏幕。
 Mac Safari：文件 → 添加到程序坞。
 Chrome/Edge/Android：如浏览器支持，可直接安装应用。
 首次加载需要联网，之后学习/测试可离线。
+
+
+安装说明（v3）
+- Mac Safari：文件 → 添加到程序坞。Safari 不支持网页按钮直接弹系统安装框。
+- Windows Edge：… → 应用 → 将此站点作为应用安装。
+- Windows/Mac Chrome：优先使用地址栏安装图标；若未出现，用 ⋮ → 投放、保存和分享 → 安装。
+- iPhone/iPad Safari：分享 → 添加到主屏幕。
+- 网页按钮只会在 Chromium 真正触发 beforeinstallprompt 时调用原生安装框；否则会显示对应浏览器的准确入口。

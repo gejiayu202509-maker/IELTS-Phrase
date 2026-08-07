@@ -8,7 +8,7 @@
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 15% 0,#edf1ff 0,transparent 34%),linear-gradient(180deg,#fbfcff,#f5f7fb);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,sans-serif;color:var(--ink)}
 .wrap{max-width:1080px;margin:0 auto;padding:72px 22px 60px}.eyebrow{font-size:12px;letter-spacing:.14em;font-weight:850;color:var(--brand);text-transform:uppercase}.hero{text-align:center;max-width:790px;margin:0 auto 42px}.hero h1{font-size:42px;line-height:1.16;margin:12px 0 14px;letter-spacing:-.02em}.hero p{margin:0;color:var(--muted);font-size:16px;line-height:1.8}.stats{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:22px}.chip{border:1px solid #dfe5f3;background:rgba(255,255,255,.72);border-radius:999px;padding:8px 12px;font-size:13px;color:#475467;font-weight:700}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:30px;position:relative;overflow:hidden;min-height:320px;display:flex;flex-direction:column}.card:before{content:"";position:absolute;width:160px;height:160px;border-radius:50%;right:-70px;top:-70px;background:#eef2ff}.card.test:before{background:#ecf8f1}.icon{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;background:#eef2ff;color:var(--brand);font-size:25px;font-weight:900;position:relative}.test .icon{background:#eaf8f1;color:var(--green)}.card h2{font-size:25px;margin:22px 0 10px;position:relative}.card p{color:var(--muted);line-height:1.75;margin:0 0 20px;position:relative}.features{display:grid;gap:8px;margin:0 0 26px;color:#475467;font-size:14px}.features span:before{content:"✓";font-weight:900;margin-right:8px;color:var(--brand)}.test .features span:before{color:var(--green)}.btn{margin-top:auto;display:flex;align-items:center;justify-content:space-between;text-decoration:none;border-radius:13px;padding:14px 16px;font-weight:850;background:var(--brand);color:#fff;position:relative}.test .btn{background:var(--green)}.btn:hover{filter:brightness(.96)}.foot{text-align:center;color:#98a2b3;font-size:12px;line-height:1.7;margin-top:28px}.note{max-width:720px;margin:22px auto 0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 15px;color:#667085;font-size:13px;text-align:center}
 
-.installbar{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}.installbtn{border:0;background:#172033;color:#fff;border-radius:12px;padding:11px 15px;font-weight:850;cursor:pointer;box-shadow:0 8px 24px rgba(23,32,51,.14)}.installbtn:hover{filter:brightness(1.05)}.installstate{font-size:12px;color:#667085}.installbtn.installed{background:#16794a}.ioshint{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:flex-end;justify-content:center;z-index:99;padding:18px}.ioshint.show{display:flex}.hintcard{max-width:520px;width:100%;background:#fff;border-radius:22px;padding:22px;box-shadow:0 22px 70px rgba(0,0,0,.22);text-align:left}.hintcard h3{margin:0 0 10px}.hintcard p{color:#475467;line-height:1.75;margin:7px 0}.hintcard .closehint{width:100%;margin-top:10px;border:0;background:#3559e0;color:#fff;border-radius:12px;padding:12px;font-weight:850;cursor:pointer}
+.installbar{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}.installbtn{border:0;background:#172033;color:#fff;border-radius:12px;padding:11px 15px;font-weight:850;cursor:pointer;box-shadow:0 8px 24px rgba(23,32,51,.14)}.installbtn:hover{filter:brightness(1.05)}.installstate{font-size:12px;color:#667085}.installbtn.installed{background:#16794a}.installhint{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:flex-end;justify-content:center;z-index:99;padding:18px}.installhint.show{display:flex}.hintcard{max-width:560px;width:100%;background:#fff;border-radius:22px;padding:22px;box-shadow:0 22px 70px rgba(0,0,0,.22);text-align:left}.hintcard h3{margin:0 0 10px}.hintcard p{color:#475467;line-height:1.72;margin:8px 0}.hintsteps{margin:12px 0;padding:12px 14px;background:#f7f8fc;border:1px solid #e7eaf2;border-radius:12px;color:#344054;line-height:1.75;font-size:14px}.hintmeta{font-size:12px;color:#98a2b3;margin-top:10px}.hintcard .closehint{width:100%;margin-top:12px;border:0;background:#3559e0;color:#fff;border-radius:12px;padding:12px;font-weight:850;cursor:pointer}
 @media(max-width:760px){.wrap{padding-top:38px}.hero h1{font-size:32px}.grid{grid-template-columns:1fr}.card{min-height:0}}
 </style>
 
@@ -29,21 +29,127 @@
 <div class="note">直接把这个网址发给老师或学生即可。iPad / iPhone 用 Safari 打开后，可点“添加到主屏幕”；安卓和电脑浏览器也可安装为应用。</div>
 <div class="foot">PWA 版 · 学习数据和测试记录只保存在当前设备浏览器中</div>
 </main>
-<div id="iosHint" class="ioshint"><div class="hintcard"><h3>添加到主屏幕</h3><p><b>iPad / iPhone：</b>请用 Safari 打开本页 → 点工具栏的“分享”按钮 → 选择“添加到主屏幕” → 点“添加”。</p><p><b>安卓 / 电脑：</b>如果浏览器支持，会直接弹出“安装应用”。</p><button id="closeHint" class="closehint">知道了</button></div></div>
+<div id="installHint" class="installhint"><div class="hintcard"><h3 id="hintTitle">安装雅思短语</h3><p id="hintIntro"></p><div id="hintSteps" class="hintsteps"></div><div id="hintMeta" class="hintmeta"></div><button id="closeHint" class="closehint">知道了</button></div></div>
 <script>
 (function(){
-  var deferredPrompt=null, btn=document.getElementById('installBtn'), state=document.getElementById('installState');
+  var deferredPrompt=null;
+  var btn=document.getElementById('installBtn');
+  var state=document.getElementById('installState');
+  var hint=document.getElementById('installHint');
+  var hintTitle=document.getElementById('hintTitle');
+  var hintIntro=document.getElementById('hintIntro');
+  var hintSteps=document.getElementById('hintSteps');
+  var hintMeta=document.getElementById('hintMeta');
+  var ua=navigator.userAgent || '';
+  var isIOS=/iPhone|iPad|iPod/i.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  var isEdge=/Edg\//.test(ua);
+  var isChrome=/Chrome\//.test(ua) && !isEdge && !/OPR\//.test(ua);
+  var isFirefox=/Firefox\//.test(ua);
+  var isSafari=/Safari\//.test(ua) && !/Chrome\//.test(ua) && !/Chromium\//.test(ua) && !isEdge;
+  var isMac=/Macintosh|Mac OS X/.test(ua) && !isIOS;
+  var isAndroid=/Android/.test(ua);
   var standalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
-  if(standalone){btn.textContent='✓ 已作为应用打开';btn.classList.add('installed');state.textContent='离线缓存已启用';}
-  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredPrompt=e;state.textContent='当前设备支持一键安装';});
-  window.addEventListener('appinstalled',function(){btn.textContent='✓ 安装完成';btn.classList.add('installed');state.textContent='以后可直接从桌面打开';deferredPrompt=null;});
+
+  function browserName(){
+    if(isEdge)return 'Microsoft Edge';
+    if(isChrome)return 'Google Chrome';
+    if(isSafari)return 'Safari';
+    if(isFirefox)return 'Firefox';
+    return '当前浏览器';
+  }
+  function showHelp(reason){
+    var title='安装雅思短语', intro='', steps='';
+    if(isIOS){
+      title='在 iPhone / iPad 上安装';
+      intro='iOS 不允许网页按钮直接弹出系统安装框，这是 Safari 的系统限制。';
+      steps='<b>Safari：</b>点“分享” ⬆️ → <b>添加到主屏幕</b> → <b>添加</b>。';
+    }else if(isMac && isSafari){
+      title='在 Mac Safari 上安装';
+      intro='Safari 不支持网页用 JavaScript 直接触发安装窗口，但 macOS 可以把任何网页保存成独立 Web App。';
+      steps='<b>Safari 菜单栏：</b>文件 → <b>添加到程序坞</b>（Add to Dock）→ 添加。';
+    }else if(isEdge){
+      title='在 Microsoft Edge 上安装';
+      intro='当前没有收到浏览器的一键安装事件，你仍然可以从 Edge 菜单手动安装。';
+      steps='<b>右上角 …</b> → <b>应用</b>（Apps）→ <b>将此站点作为应用安装</b>（Install this site as an app）。';
+    }else if(isChrome){
+      title='在 Google Chrome 上安装';
+      intro='当前没有收到 Chrome 的一键安装事件。可能是刚更新、此前取消过提示，或 Chrome 暂时没有重新触发安装事件。';
+      steps='先看地址栏右侧有没有<b>安装图标</b>。如果没有：<b>右上角 ⋮</b> → <b>投放、保存和分享</b>（Cast, save, and share）→ <b>安装“雅思短语”</b> / <b>将网页安装为应用</b>。';
+    }else if(isAndroid){
+      title='在安卓上安装';
+      intro='如果浏览器没有自动弹出安装框，可以从浏览器菜单安装。';
+      steps='<b>Chrome 右上角 ⋮</b> → <b>安装应用</b> 或 <b>添加到主屏幕</b>。';
+    }else if(isFirefox){
+      title='当前 Firefox 桌面版不提供同样的 PWA 安装体验';
+      intro='网站本身可以正常使用和离线缓存，但建议用 Edge、Chrome，或 Mac Safari 安装成独立应用。';
+      steps='Windows：用 <b>Edge / Chrome</b> 打开本网址；Mac：用 <b>Safari</b> 打开后选择“添加到程序坞”。';
+    }else{
+      title='当前浏览器没有提供网页安装事件';
+      intro='网站可以正常使用；要安装成独立 App，请换用支持 PWA / Web App 的浏览器。';
+      steps='Windows：推荐 <b>Edge / Chrome</b>；Mac：推荐 <b>Safari → 文件 → 添加到程序坞</b>，或 Chrome。';
+    }
+    hintTitle.textContent=title;
+    hintIntro.innerHTML=intro;
+    hintSteps.innerHTML=steps;
+    hintMeta.textContent='识别到：'+browserName()+(reason ? ' · '+reason : '');
+    hint.classList.add('show');
+  }
+
+  if(standalone){
+    btn.textContent='✓ 已作为应用打开';
+    btn.classList.add('installed');
+    state.textContent='已经安装；离线缓存可继续使用';
+  }else if(isMac && isSafari){
+    btn.textContent='＋ 添加到程序坞';
+    state.textContent='Safari：文件 → 添加到程序坞';
+  }else if(isIOS){
+    btn.textContent='＋ 添加到主屏幕';
+    state.textContent='Safari：分享 → 添加到主屏幕';
+  }else if(isEdge || isChrome){
+    state.textContent='正在检查浏览器的一键安装能力…';
+    setTimeout(function(){ if(!deferredPrompt) state.textContent='若未弹窗，点击按钮查看当前浏览器的安装入口'; },1800);
+  }else{
+    state.textContent='点击查看当前设备的安装方法';
+  }
+
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();
+    deferredPrompt=e;
+    state.textContent='✓ 当前浏览器支持一键安装';
+  });
+  window.addEventListener('appinstalled',function(){
+    btn.textContent='✓ 安装完成';
+    btn.classList.add('installed');
+    state.textContent='以后可直接从桌面 / 开始菜单打开';
+    deferredPrompt=null;
+  });
+
   btn.addEventListener('click',async function(){
     if(standalone)return;
-    if(deferredPrompt){deferredPrompt.prompt();try{await deferredPrompt.userChoice;}catch(e){} deferredPrompt=null;return;}
-    document.getElementById('iosHint').classList.add('show');
+    if(deferredPrompt){
+      try{
+        deferredPrompt.prompt();
+        var choice=await deferredPrompt.userChoice;
+        if(choice && choice.outcome==='accepted') state.textContent='正在完成安装…';
+        else state.textContent='安装已取消；仍可再次点击查看手动安装入口';
+      }catch(e){
+        showHelp('系统安装框未能打开');
+      }
+      deferredPrompt=null;
+      return;
+    }
+    showHelp('浏览器未触发一键安装事件');
   });
-  document.getElementById('closeHint').addEventListener('click',function(){document.getElementById('iosHint').classList.remove('show');});
-  document.getElementById('iosHint').addEventListener('click',function(e){if(e.target===this)this.classList.remove('show');});
+  document.getElementById('closeHint').addEventListener('click',function(){hint.classList.remove('show');});
+  hint.addEventListener('click',function(e){if(e.target===this)this.classList.remove('show');});
+
+  if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){
+    navigator.serviceWorker.ready.then(function(){
+      if(!standalone && (isEdge||isChrome) && !deferredPrompt){
+        state.textContent='离线缓存已就绪；若无安装弹窗，点击按钮查看浏览器安装入口';
+      }
+    }).catch(function(){});
+  }
 })();
 </script>
 
