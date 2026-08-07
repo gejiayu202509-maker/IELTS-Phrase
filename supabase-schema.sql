@@ -40,6 +40,13 @@ create table if not exists public.test_records (
   unique (user_id, client_id)
 );
 
+create table if not exists public.test_record_tombstones (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  client_id text not null,
+  deleted_at timestamptz not null default now(),
+  primary key (user_id, client_id)
+);
+
 create index if not exists test_records_user_completed_idx
   on public.test_records (user_id, completed_at desc);
 create index if not exists test_records_expiry_idx
@@ -91,6 +98,7 @@ for each row execute function public.handle_new_user();
 alter table public.profiles enable row level security;
 alter table public.mastered_phrases enable row level security;
 alter table public.test_records enable row level security;
+alter table public.test_record_tombstones enable row level security;
 
 -- Re-running this file is safe: recreate policies cleanly.
 drop policy if exists "profiles_select_own" on public.profiles;
@@ -104,6 +112,10 @@ drop policy if exists "tests_select_own" on public.test_records;
 drop policy if exists "tests_insert_own" on public.test_records;
 drop policy if exists "tests_update_own" on public.test_records;
 drop policy if exists "tests_delete_own" on public.test_records;
+drop policy if exists "test_tombstones_select_own" on public.test_record_tombstones;
+drop policy if exists "test_tombstones_insert_own" on public.test_record_tombstones;
+drop policy if exists "test_tombstones_update_own" on public.test_record_tombstones;
+drop policy if exists "test_tombstones_delete_own" on public.test_record_tombstones;
 
 create policy "profiles_select_own" on public.profiles
 for select to authenticated using ((select auth.uid()) = user_id);
@@ -130,12 +142,24 @@ for update to authenticated using ((select auth.uid()) = user_id) with check ((s
 create policy "tests_delete_own" on public.test_records
 for delete to authenticated using ((select auth.uid()) = user_id);
 
+create policy "test_tombstones_select_own" on public.test_record_tombstones
+for select to authenticated using ((select auth.uid()) = user_id);
+create policy "test_tombstones_insert_own" on public.test_record_tombstones
+for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "test_tombstones_update_own" on public.test_record_tombstones
+for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "test_tombstones_delete_own" on public.test_record_tombstones
+for delete to authenticated using ((select auth.uid()) = user_id);
+
+
 -- Least-privilege Data API grants. RLS still decides which rows are accessible.
 grant usage on schema public to authenticated;
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.mastered_phrases to authenticated;
 grant select, insert, update, delete on public.test_records to authenticated;
+grant select, insert, update, delete on public.test_record_tombstones to authenticated;
 
 revoke all on public.profiles from anon;
 revoke all on public.mastered_phrases from anon;
 revoke all on public.test_records from anon;
+revoke all on public.test_record_tombstones from anon;

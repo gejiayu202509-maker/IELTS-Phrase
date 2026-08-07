@@ -121,21 +121,50 @@
     const ts=Date.parse(r.completed_at)||Date.now(),exp=r.expires_at?Date.parse(r.expires_at):null;
     return {id:r.client_id,timestamp:ts,date:new Date(ts).toLocaleString('zh-CN',{hour12:false}),name:r.nickname_snapshot||'',correct:r.correct_count,total:r.total_count,rate:r.rate,mode:r.mode,modules:r.modules||[],moduleIds:r.module_ids||[],wrong:Array.isArray(r.wrong_items)?r.wrong_items:[],reviewLog:Array.isArray(r.review_log)?r.review_log:[],savedAt:Date.parse(r.created_at)||ts,keepForever:r.keep_forever===true,expiresAt:exp,cloudId:r.id};
   }
+  function historyTombstoned(id){return readArray(deletedKey()).map(String).includes(String(id))}
+  function addLocalHistoryTombstone(id){
+    const key=deletedKey(),sid=String(id),tomb=readArray(key).map(String);
+    if(!tomb.includes(sid)){tomb.push(sid);writeArray(key,tomb)}
+  }
+  async function cloudHistoryTombstoned(id){
+    if(!user||!client)return false;
+    const {data,error}=await client.from('test_record_tombstones').select('client_id').eq('user_id',user.id).eq('client_id',String(id)).maybeSingle();
+    if(error)throw error;
+    return !!data;
+  }
   async function saveHistory(record){
     if(!user||!client)return {ok:false,localOnly:true};
-    const {error}=await client.from('test_records').upsert(recordToRow(record),{onConflict:'user_id,client_id'});if(error){console.warn('history sync failed',error);return{ok:false,error}}return{ok:true};
+    const id=String(record&&record.id||'');
+    // Manual deletions are durable across devices. Before every upload, consult both
+    // the local and cloud tombstone sets so a stale tab/device cannot resurrect a row.
+    if(id&&historyTombstoned(id))return{ok:false,deleted:true};
+    try{
+      if(id&&await cloudHistoryTombstoned(id)){addLocalHistoryTombstone(id);return{ok:false,deleted:true}}
+    }catch(e){console.warn('history tombstone check failed; refusing unsafe upload',e);return{ok:false,error:e}}
+    const {error}=await client.from('test_records').upsert(recordToRow(record),{onConflict:'user_id,client_id'});
+    if(error){console.warn('history sync failed',error);return{ok:false,error}}
+    // Close the race where the delete happens while this upsert is in flight.
+    if(id&&historyTombstoned(id)){
+      await client.from('test_records').delete().eq('user_id',user.id).eq('client_id',id);
+      return{ok:false,deleted:true};
+    }
+    return{ok:true};
   }
   async function deleteHistory(clientId){
     if(!user||!client)return{ok:false,localOnly:true};
-    const id=String(clientId), key=deletedKey();
-    // Write a tombstone BEFORE touching the cloud. This prevents any in-flight
-    // or later sync from restoring a record that the user has already deleted.
-    const tomb=readArray(key).map(String);
-    if(!tomb.includes(id)){tomb.push(id);writeArray(key,tomb)}
+    const id=String(clientId);
+    addLocalHistoryTombstone(id);
+    // Persist the deletion marker FIRST. The tiny tombstone row remains in Supabase,
+    // while the actual test record is physically removed. Other devices see the marker
+    // before uploading stale local history, so the record cannot come back.
+    const {error:tombError}=await client.from('test_record_tombstones').upsert({user_id:user.id,client_id:id},{onConflict:'user_id,client_id'});
+    if(tombError){console.warn('cloud tombstone save failed; local tombstone kept',tombError);return{ok:false,error:tombError,retryQueued:true}}
     const {error}=await client.from('test_records').delete().eq('user_id',user.id).eq('client_id',id);
-    if(error){console.warn('history delete failed; tombstone kept for retry',error);return{ok:false,error,retryQueued:true}}
-    // Keep the tombstone until syncAll verifies the cloud state and clears it.
-    return{ok:true,pendingSync:true};
+    if(error){console.warn('history delete failed; tombstone will force retry',error);return{ok:false,error,retryQueued:true}}
+    const {data:stillThere,error:verifyError}=await client.from('test_records').select('client_id').eq('user_id',user.id).eq('client_id',id).maybeSingle();
+    if(verifyError){console.warn('history delete verification failed',verifyError);return{ok:false,error:verifyError,retryQueued:true}}
+    if(stillThere){console.warn('history row still exists after delete; tombstone prevents resurrection',id);return{ok:false,notDeleted:true,retryQueued:true}}
+    return{ok:true,verified:true};
   }
   async function setMastered(phraseKey,topicId,itemId,mastered){
     if(!user||!client)return{ok:false,localOnly:true};const k=String(phraseKey);
@@ -156,33 +185,43 @@
     if(loading||!user||!client)return;loading=true;updateUI('syncing');
     try{
       await cleanupExpired();
-      // Tombstones win over every other source of truth. Filter deleted IDs out of
-      // the local cache BEFORE any upload, otherwise an in-flight sync can recreate them.
       const hk=api.historyStorageKey(), tombKey=deletedKey();
-      const tomb=readArray(tombKey).map(String), tombSet=new Set(tomb);
+
+      // Pull cloud tombstones BEFORE uploading any local history. This is the key
+      // cross-device rule: server-side deletion markers always win over stale caches.
+      const {data:cloudTombRows,error:cloudTombError}=await client.from('test_record_tombstones').select('client_id').eq('user_id',user.id);
+      if(cloudTombError)throw cloudTombError;
+      const localTomb=readArray(tombKey).map(String),cloudTomb=(cloudTombRows||[]).map(x=>String(x.client_id));
+      const tomb=[...new Set([...localTomb,...cloudTomb])],tombSet=new Set(tomb);
+      writeArray(tombKey,tomb);
+
+      // Push any offline/local deletion markers to Supabase before touching test_records.
+      if(localTomb.length){
+        const rows=localTomb.map(id=>({user_id:user.id,client_id:id}));
+        const {error}=await client.from('test_record_tombstones').upsert(rows,{onConflict:'user_id,client_id'});
+        if(error)throw error;
+      }
+
       let localH=readArray(hk).filter(r=>r&&r.id&&!tombSet.has(String(r.id)));
       writeArray(hk,localH);
 
-      // Retry pending cloud deletions first. Failed IDs stay in the tombstone list.
-      const failedTomb=[];
-      for(const id of tomb){
-        const {error}=await client.from('test_records').delete().eq('user_id',user.id).eq('client_id',id);
-        if(error){failedTomb.push(id);console.warn('pending history delete retry failed',id,error)}
+      // Physically remove any test row covered by a tombstone. Chunk the request so
+      // the logic remains safe even after many deletions over time.
+      for(let i=0;i<tomb.length;i+=100){
+        const ids=tomb.slice(i,i+100);if(!ids.length)continue;
+        const {error}=await client.from('test_records').delete().eq('user_id',user.id).in('client_id',ids);
+        if(error)console.warn('tombstoned history cleanup failed',error);
       }
 
       // Only non-deleted local rows may be uploaded.
-      if(localH.length){const rows=localH.map(recordToRow);if(rows.length)await client.from('test_records').upsert(rows,{onConflict:'user_id,client_id'})}
+      if(localH.length){const rows=localH.map(recordToRow);if(rows.length){const{error}=await client.from('test_records').upsert(rows,{onConflict:'user_id,client_id'});if(error)throw error}}
       const pendingClear=localStorage.getItem(clearMasteredKey());if(pendingClear){let q=client.from('mastered_phrases').delete().eq('user_id',user.id);if(pendingClear!=='*')q=q.eq('topic_id',pendingClear);const{error}=await q;if(!error)localStorage.removeItem(clearMasteredKey())}
       const mtomb=readArray(deletedMasteredKey());if(mtomb.length){for(const k of mtomb)await client.from('mastered_phrases').delete().eq('user_id',user.id).eq('phrase_key',String(k));writeArray(deletedMasteredKey(),[])}
       const mk=api.masteredStorageKey(),localM=readArray(mk);if(localM.length){const rows=localM.map(k=>{const p=String(k).split(':');return{user_id:user.id,phrase_key:String(k),topic_id:p[0]||'unknown',item_id:Number(p[1])||0}});await client.from('mastered_phrases').upsert(rows,{onConflict:'user_id,phrase_key'})}
       const [{data:tests,error:te},{data:mastered,error:me}]=await Promise.all([client.from('test_records').select('*').eq('user_id',user.id).order('completed_at',{ascending:false}),client.from('mastered_phrases').select('phrase_key').eq('user_id',user.id)]);
       if(te)throw te;if(me)throw me;
-      // Even if a cloud DELETE temporarily failed, never let a tombstoned row reappear
-      // in the UI. It remains hidden locally and will be retried on the next sync.
       const allTests=(tests||[]).filter(x=>!tombSet.has(String(x.client_id))),kept=allTests.filter(x=>x.keep_forever),regular=allTests.filter(x=>!x.keep_forever),excess=regular.slice(50);if(excess.length){for(const r of excess)await client.from('test_records').delete().eq('user_id',user.id).eq('id',r.id)}const visible=[...kept,...regular.slice(0,50)].sort((a,b)=>Date.parse(b.completed_at)-Date.parse(a.completed_at));
       writeArray(hk,visible.map(rowToRecord));writeArray(mk,(mastered||[]).map(x=>x.phrase_key));
-      // Successful deletions are now verified by the fresh SELECT above; keep only failures.
-      writeArray(tombKey,failedTomb);
       emit('ielts-cloud-sync',{signedIn:true,manual,history:visible.length,mastered:(mastered||[]).length});
     }catch(e){console.warn('Cloud sync failed',e);emit('ielts-cloud-error',{error:e})}finally{loading=false;updateUI()}
   }
