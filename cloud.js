@@ -3,6 +3,7 @@
   const SUPABASE_URL='https://xyaaxalrrntmhpfgijzu.supabase.co';
   const SUPABASE_KEY='sb_publishable_J7aI1rYqBVq_6FJ-_EY-SA_D1pg3vkB';
   const SDK='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  const APP_URL='https://gejiayu202509-maker.github.io/IELTS-Phrase/';
   const DAY=24*60*60*1000, TTL=30*DAY;
   let client=null,user=null,profile=null,loading=false;
 
@@ -21,6 +22,7 @@
     async clearMastered(topicId){return clearMastered(topicId)},
     async syncAll(){return syncAll()},
     async signOut(){if(client)await client.auth.signOut()},
+    openAccount(mode='login'){openModal(mode)}
   };
   window.IELTSCloud=api;
 
@@ -28,7 +30,7 @@
   function toast(msg){
     let t=document.getElementById('cloudToast');
     if(!t){t=document.createElement('div');t.id='cloudToast';t.className='cloud-toast';document.body.appendChild(t)}
-    t.textContent=msg;t.classList.add('show');clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove('show'),2400);
+    t.textContent=msg;t.classList.add('show');clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove('show'),3000);
   }
   function safeJson(s,fallback){try{return JSON.parse(s)}catch(_){return fallback}}
   function readArray(key){const x=safeJson(localStorage.getItem(key)||'[]',[]);return Array.isArray(x)?x:[]}
@@ -37,45 +39,77 @@
   function deletedMasteredKey(){return user?`ieltsPhraseDeletedMastered:${user.id}`:'ieltsPhraseDeletedMastered'}
   function clearMasteredKey(){return user?`ieltsPhraseClearMastered:${user.id}`:'ieltsPhraseClearMastered'}
   function profileName(){return profile&&profile.nickname || user&&user.email&&user.email.split('@')[0] || '已登录'}
+  function guestChosen(){return sessionStorage.getItem('ieltsGuestSessionV7')==='1'}
+  function setGuest(v){if(v)sessionStorage.setItem('ieltsGuestSessionV7','1');else sessionStorage.removeItem('ieltsGuestSessionV7')}
 
   function injectStyles(){
     if(document.getElementById('cloudStyles'))return;
     const s=document.createElement('style');s.id='cloudStyles';s.textContent=`
-    .cloud-account{position:fixed;right:14px;top:14px;z-index:80;border:1px solid #e1e6f0;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-radius:999px;padding:8px 12px;box-shadow:0 7px 24px rgba(23,32,51,.10);font:750 12px -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:#344054;cursor:pointer}.cloud-account.online{color:#115e3d;border-color:#cce8d8}.cloud-account.syncing{color:#3559e0}.cloud-modal{position:fixed;inset:0;z-index:120;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:18px}.cloud-modal.show{display:flex}.cloud-card{width:min(440px,100%);background:#fff;border-radius:22px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.24);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}.cloud-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.cloud-head h3{margin:0;font-size:20px;color:#172033}.cloud-head p{margin:6px 0 0;color:#667085;font-size:12px;line-height:1.55}.cloud-x{border:0;background:#f2f4f7;border-radius:999px;width:30px;height:30px;cursor:pointer}.cloud-tabs{display:flex;background:#f3f5f9;border-radius:10px;padding:3px;margin:17px 0 12px}.cloud-tabs button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px;font-weight:800;color:#667085;cursor:pointer}.cloud-tabs button.active{background:#fff;color:#3559e0;box-shadow:0 2px 8px rgba(0,0,0,.06)}.cloud-form{display:grid;gap:9px}.cloud-form label{font-size:12px;font-weight:750;color:#475467}.cloud-form input{width:100%;margin-top:5px;border:1px solid #d9deea;border-radius:10px;padding:11px 12px;font:inherit;outline:none}.cloud-form input:focus{border-color:#8da1ff;box-shadow:0 0 0 3px rgba(53,89,224,.08)}.cloud-primary,.cloud-secondary{border:0;border-radius:10px;padding:11px 12px;font-weight:850;cursor:pointer}.cloud-primary{background:#3559e0;color:#fff}.cloud-secondary{background:#f2f4f7;color:#344054}.cloud-note{font-size:11px;color:#98a2b3;line-height:1.55}.cloud-userbox{background:#f8f9fc;border:1px solid #e5e9f2;border-radius:13px;padding:13px;margin:14px 0}.cloud-userbox b{display:block;color:#172033}.cloud-userbox span{font-size:12px;color:#667085}.cloud-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,18px);opacity:0;pointer-events:none;z-index:150;background:#111827;color:#fff;padding:10px 14px;border-radius:10px;font:700 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:.18s}.cloud-toast.show{transform:translate(-50%,0);opacity:1}@media(max-width:600px){.cloud-account{top:9px;right:9px;padding:7px 10px}.cloud-card{padding:18px}}
+    .cloud-account{position:fixed;right:14px;top:14px;z-index:80;border:1px solid #e1e6f0;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-radius:999px;padding:8px 12px;box-shadow:0 7px 24px rgba(23,32,51,.10);font:750 12px -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:#344054;cursor:pointer}.cloud-account.online{color:#115e3d;border-color:#cce8d8}.cloud-account.syncing{color:#3559e0}
+    .cloud-modal{position:fixed;inset:0;z-index:130;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:18px}.cloud-modal.show{display:flex}.cloud-card{width:min(440px,100%);background:#fff;border-radius:22px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.24);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}.cloud-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.cloud-head h3{margin:0;font-size:20px;color:#172033}.cloud-head p{margin:6px 0 0;color:#667085;font-size:12px;line-height:1.55}.cloud-x{border:0;background:#f2f4f7;border-radius:999px;width:30px;height:30px;cursor:pointer}.cloud-tabs{display:flex;background:#f3f5f9;border-radius:10px;padding:3px;margin:17px 0 12px}.cloud-tabs button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px;font-weight:800;color:#667085;cursor:pointer}.cloud-tabs button.active{background:#fff;color:#3559e0;box-shadow:0 2px 8px rgba(0,0,0,.06)}.cloud-form{display:grid;gap:9px}.cloud-form label{font-size:12px;font-weight:750;color:#475467}.cloud-form input{width:100%;margin-top:5px;border:1px solid #d9deea;border-radius:10px;padding:11px 12px;font:inherit;outline:none}.cloud-form input:focus{border-color:#8da1ff;box-shadow:0 0 0 3px rgba(53,89,224,.08)}.cloud-primary,.cloud-secondary{border:0;border-radius:10px;padding:11px 12px;font-weight:850;cursor:pointer}.cloud-primary{background:#3559e0;color:#fff}.cloud-secondary{background:#f2f4f7;color:#344054}.cloud-note{font-size:11px;color:#98a2b3;line-height:1.55}.cloud-auth-status{display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:#eef8f2;border:1px solid #cfe9d9;color:#16613f;font-size:12px;line-height:1.6}.cloud-userbox{background:#f8f9fc;border:1px solid #e5e9f2;border-radius:13px;padding:13px;margin:14px 0}.cloud-userbox b{display:block;color:#172033}.cloud-userbox span{font-size:12px;color:#667085}.cloud-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,18px);opacity:0;pointer-events:none;z-index:160;background:#111827;color:#fff;padding:10px 14px;border-radius:10px;font:700 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:.18s}.cloud-toast.show{transform:translate(-50%,0);opacity:1}
+    .cloud-gate{position:fixed;inset:0;z-index:115;display:none;align-items:center;justify-content:center;padding:22px;background:radial-gradient(circle at 15% 0,#edf1ff 0,transparent 34%),linear-gradient(180deg,#fbfcff,#f5f7fb);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}.cloud-gate.show{display:flex}.cloud-gatebox{width:min(880px,100%);text-align:center}.cloud-gate-logo{width:70px;height:70px;margin:0 auto 18px;border-radius:20px;display:grid;place-items:center;background:#3559e0;color:#fff;font-weight:900;font-size:19px;box-shadow:0 16px 40px rgba(53,89,224,.22)}.cloud-gate h1{font-size:36px;letter-spacing:-.02em;margin:0 0 10px;color:#172033}.cloud-gate-sub{margin:0 auto 28px;max-width:620px;color:#667085;line-height:1.75;font-size:15px}.cloud-gate-options{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.cloud-gate-choice{appearance:none;text-align:left;border:1px solid #e2e7f0;background:#fff;border-radius:20px;padding:22px;min-height:170px;cursor:pointer;box-shadow:0 12px 36px rgba(23,32,51,.08);transition:.16s}.cloud-gate-choice:hover{transform:translateY(-2px);border-color:#cfd8ff;box-shadow:0 16px 42px rgba(23,32,51,.11)}.cloud-gate-choice .cloud-choice-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#eef2ff;color:#3559e0;font-size:20px;font-weight:900;margin-bottom:18px}.cloud-gate-choice.guest .cloud-choice-icon{background:#f2f4f7;color:#475467}.cloud-gate-choice h2{font-size:19px;margin:0 0 8px;color:#172033}.cloud-gate-choice p{font-size:13px;line-height:1.65;margin:0;color:#667085}.cloud-gate-foot{margin-top:18px;color:#98a2b3;font-size:11px;line-height:1.55}
+    @media(max-width:720px){.cloud-account{top:9px;right:9px;padding:7px 10px}.cloud-card{padding:18px}.cloud-gate{align-items:flex-start;overflow:auto;padding-top:max(32px,env(safe-area-inset-top))}.cloud-gate h1{font-size:29px}.cloud-gate-options{grid-template-columns:1fr}.cloud-gate-choice{min-height:0;padding:18px}.cloud-gate-choice .cloud-choice-icon{margin-bottom:12px}}
     `;document.head.appendChild(s);
   }
 
   function injectUI(){
     injectStyles();
     if(!document.getElementById('cloudAccount')){
-      const b=document.createElement('button');b.id='cloudAccount';b.className='cloud-account';b.textContent='登录 · 多设备同步';b.onclick=()=>openModal();document.body.appendChild(b);
+      const b=document.createElement('button');b.id='cloudAccount';b.className='cloud-account';b.textContent='登录 · 多设备同步';b.onclick=()=>openModal('login');document.body.appendChild(b);
+    }
+    if(!document.getElementById('cloudGate')){
+      const g=document.createElement('div');g.id='cloudGate';g.className='cloud-gate';g.innerHTML=`<div class="cloud-gatebox"><div class="cloud-gate-logo">IELTS</div><h1>欢迎使用雅思短语学习系统</h1><p class="cloud-gate-sub">请选择进入方式。登录账号可在不同设备同步学习进度、测试记录和错题复习；游客模式不需要账号，数据只保存在当前设备。</p><div class="cloud-gate-options"><button class="cloud-gate-choice" id="cloudGateLogin"><div class="cloud-choice-icon">→</div><h2>登录</h2><p>已有账号，登录后继续之前的学习、测试和错题复习进度。</p></button><button class="cloud-gate-choice" id="cloudGateRegister"><div class="cloud-choice-icon">＋</div><h2>注册</h2><p>创建新账号，通过邮箱确认后即可跨 Mac、Windows、iPad 和手机同步。</p></button><button class="cloud-gate-choice guest" id="cloudGateGuest"><div class="cloud-choice-icon">游</div><h2>游客模式</h2><p>直接进入，不需要邮箱和密码；记录只保存在这台设备的浏览器中。</p></button></div><div class="cloud-gate-foot">游客模式期间不会同步云端；之后随时可从右上角登录或注册，并可迁移本机已有学习记录。</div></div>`;document.body.appendChild(g);
+      document.getElementById('cloudGateLogin').onclick=()=>openModal('login');
+      document.getElementById('cloudGateRegister').onclick=()=>openModal('register');
+      document.getElementById('cloudGateGuest').onclick=()=>{setGuest(true);updateGate();toast('已进入游客模式 · 数据仅保存在当前设备')};
     }
     if(!document.getElementById('cloudModal')){
-      const m=document.createElement('div');m.id='cloudModal';m.className='cloud-modal';m.innerHTML=`<div class="cloud-card"><div class="cloud-head"><div><h3>学习账号</h3><p>登录后同步已掌握短语、测试历史和错题复习进度。未登录时仍可在本机离线使用。</p></div><button class="cloud-x" id="cloudClose">×</button></div><div id="cloudSignedOut"><div class="cloud-tabs"><button id="cloudTabLogin" class="active">登录</button><button id="cloudTabRegister">注册</button></div><form id="cloudLoginForm" class="cloud-form"><label>邮箱<input id="cloudLoginEmail" type="email" autocomplete="email" required></label><label>密码<input id="cloudLoginPassword" type="password" autocomplete="current-password" minlength="6" required></label><button class="cloud-primary" type="submit">登录并同步</button><div class="cloud-note">密码由 Supabase Auth 处理，本网站不会明文保存密码。</div></form><form id="cloudRegisterForm" class="cloud-form" style="display:none"><label>昵称<input id="cloudNickname" type="text" maxlength="40" autocomplete="nickname" required></label><label>邮箱<input id="cloudRegisterEmail" type="email" autocomplete="email" required></label><label>密码<input id="cloudRegisterPassword" type="password" autocomplete="new-password" minlength="6" required></label><button class="cloud-primary" type="submit">创建账号</button><div class="cloud-note">如果项目开启了邮箱确认，注册后需要先去邮箱点击确认链接再登录。</div></form></div><div id="cloudSignedIn" style="display:none"><div class="cloud-userbox"><b id="cloudUserName"></b><span id="cloudUserEmail"></span></div><button id="cloudSyncNow" class="cloud-primary" style="width:100%;margin-bottom:8px">立即同步</button><button id="cloudSignOut" class="cloud-secondary" style="width:100%">退出登录</button><div class="cloud-note" style="margin-top:10px">同一账号在 Mac、Windows、iPad 和手机登录后会读取同一份云端进度。</div></div></div>`;document.body.appendChild(m);
+      const m=document.createElement('div');m.id='cloudModal';m.className='cloud-modal';m.innerHTML=`<div class="cloud-card"><div class="cloud-head"><div><h3>学习账号</h3><p>登录后同步已掌握短语、测试历史和错题复习进度。</p></div><button class="cloud-x" id="cloudClose">×</button></div><div id="cloudSignedOut"><div class="cloud-tabs"><button id="cloudTabLogin" class="active">登录</button><button id="cloudTabRegister">注册</button></div><form id="cloudLoginForm" class="cloud-form"><label>邮箱<input id="cloudLoginEmail" type="email" autocomplete="email" required></label><label>密码<input id="cloudLoginPassword" type="password" autocomplete="current-password" minlength="6" required></label><button class="cloud-primary" type="submit">登录并同步</button><div class="cloud-note">密码由 Supabase Auth 处理，本网站不会明文保存密码。</div></form><form id="cloudRegisterForm" class="cloud-form" style="display:none"><label>昵称<input id="cloudNickname" type="text" maxlength="40" autocomplete="nickname" required></label><label>邮箱<input id="cloudRegisterEmail" type="email" autocomplete="email" required></label><label>密码<input id="cloudRegisterPassword" type="password" autocomplete="new-password" minlength="6" required></label><button class="cloud-primary" type="submit">创建账号</button><div class="cloud-note">开启邮箱确认时，系统会向该邮箱发送验证链接。验证成功后会自动回到雅思短语首页并登录。</div></form><div id="cloudAuthStatus" class="cloud-auth-status"></div></div><div id="cloudSignedIn" style="display:none"><div class="cloud-userbox"><b id="cloudUserName"></b><span id="cloudUserEmail"></span></div><button id="cloudSyncNow" class="cloud-primary" style="width:100%;margin-bottom:8px">立即同步</button><button id="cloudSignOut" class="cloud-secondary" style="width:100%">退出登录</button><div class="cloud-note" style="margin-top:10px">同一账号在 Mac、Windows、iPad 和手机登录后会读取同一份云端进度。</div></div></div>`;document.body.appendChild(m);
       document.getElementById('cloudClose').onclick=closeModal;
       m.addEventListener('click',e=>{if(e.target===m)closeModal()});
-      const switchTab=mode=>{const log=mode==='login';document.getElementById('cloudTabLogin').classList.toggle('active',log);document.getElementById('cloudTabRegister').classList.toggle('active',!log);document.getElementById('cloudLoginForm').style.display=log?'grid':'none';document.getElementById('cloudRegisterForm').style.display=log?'none':'grid'};
-      document.getElementById('cloudTabLogin').onclick=()=>switchTab('login');document.getElementById('cloudTabRegister').onclick=()=>switchTab('register');
-      document.getElementById('cloudLoginForm').onsubmit=async e=>{e.preventDefault();if(!client)return toast('云端服务尚未加载，请确认网络后重试');const email=document.getElementById('cloudLoginEmail').value.trim(),password=document.getElementById('cloudLoginPassword').value;const b=e.submitter;b.disabled=true;b.textContent='登录中…';const {error}=await client.auth.signInWithPassword({email,password});b.disabled=false;b.textContent='登录并同步';if(error)return toast(error.message||'登录失败');toast('登录成功，正在同步');closeModal()};
-      document.getElementById('cloudRegisterForm').onsubmit=async e=>{e.preventDefault();if(!client)return toast('云端服务尚未加载，请确认网络后重试');const nickname=document.getElementById('cloudNickname').value.trim(),email=document.getElementById('cloudRegisterEmail').value.trim(),password=document.getElementById('cloudRegisterPassword').value;const b=e.submitter;b.disabled=true;b.textContent='创建中…';const {data,error}=await client.auth.signUp({email,password,options:{data:{nickname}}});b.disabled=false;b.textContent='创建账号';if(error)return toast(error.message||'注册失败');if(data&&data.session){toast('注册成功，正在同步');closeModal()}else toast('注册成功，请先到邮箱完成确认后再登录')};
-      document.getElementById('cloudSignOut').onclick=async()=>{if(client)await client.auth.signOut();closeModal();toast('已退出登录')};
+      document.getElementById('cloudTabLogin').onclick=()=>switchTab('login');
+      document.getElementById('cloudTabRegister').onclick=()=>switchTab('register');
+      document.getElementById('cloudLoginForm').onsubmit=async e=>{
+        e.preventDefault();if(!client)return toast('云端服务尚未加载，请确认网络后重试');
+        const email=document.getElementById('cloudLoginEmail').value.trim(),password=document.getElementById('cloudLoginPassword').value;const b=e.submitter;b.disabled=true;b.textContent='登录中…';
+        const {error}=await client.auth.signInWithPassword({email,password});b.disabled=false;b.textContent='登录并同步';if(error)return toast(error.message||'登录失败');
+        setGuest(false);toast('登录成功，正在同步');closeModal();
+      };
+      document.getElementById('cloudRegisterForm').onsubmit=async e=>{
+        e.preventDefault();if(!client)return toast('云端服务尚未加载，请确认网络后重试');
+        const nickname=document.getElementById('cloudNickname').value.trim(),email=document.getElementById('cloudRegisterEmail').value.trim(),password=document.getElementById('cloudRegisterPassword').value;const b=e.submitter;b.disabled=true;b.textContent='创建中…';
+        const {data,error}=await client.auth.signUp({email,password,options:{data:{nickname},emailRedirectTo:APP_URL}});b.disabled=false;b.textContent='创建账号';
+        if(error)return toast(error.message||'注册失败');
+        const status=document.getElementById('cloudAuthStatus');
+        if(data&&data.session){setGuest(false);toast('注册成功，正在同步');closeModal()}
+        else{status.style.display='block';status.innerHTML='<b>确认邮件已发送。</b><br>请打开邮箱点击 Confirm / 确认链接。验证完成后会打开雅思短语首页并自动登录，不会再跳到不存在的页面。';toast('注册成功，请到邮箱完成确认')}
+      };
+      document.getElementById('cloudSignOut').onclick=async()=>{if(client)await client.auth.signOut();setGuest(false);closeModal();toast('已退出登录');updateGate()};
       document.getElementById('cloudSyncNow').onclick=async()=>{await syncAll(true);toast('同步完成')};
     }
-    updateUI();
+    updateUI();updateGate();
   }
-  function openModal(){injectUI();document.getElementById('cloudModal').classList.add('show');updateUI()}
+  function switchTab(mode){
+    const log=mode!=='register', status=document.getElementById('cloudAuthStatus');
+    if(status)status.style.display='none';
+    const a=document.getElementById('cloudTabLogin'),b=document.getElementById('cloudTabRegister'),lf=document.getElementById('cloudLoginForm'),rf=document.getElementById('cloudRegisterForm');
+    if(a)a.classList.toggle('active',log);if(b)b.classList.toggle('active',!log);if(lf)lf.style.display=log?'grid':'none';if(rf)rf.style.display=log?'none':'grid';
+  }
+  function openModal(mode='login'){injectUI();switchTab(mode);document.getElementById('cloudModal').classList.add('show');updateUI()}
   function closeModal(){const m=document.getElementById('cloudModal');if(m)m.classList.remove('show')}
+  function updateGate(){const g=document.getElementById('cloudGate');if(!g)return;g.classList.toggle('show',!user&&!guestChosen())}
   function updateUI(state){
     const b=document.getElementById('cloudAccount');if(!b)return;
     b.classList.toggle('online',!!user);b.classList.toggle('syncing',state==='syncing');
-    b.textContent=state==='syncing'?'同步中…':user?`☁ ${profileName()}`:'登录 · 多设备同步';
+    b.textContent=state==='syncing'?'同步中…':user?`☁ ${profileName()}`:guestChosen()?'游客模式 · 登录':'登录 · 多设备同步';
     const out=document.getElementById('cloudSignedOut'),inn=document.getElementById('cloudSignedIn');if(out&&inn){out.style.display=user?'none':'block';inn.style.display=user?'block':'none';if(user){document.getElementById('cloudUserName').textContent=profileName();document.getElementById('cloudUserEmail').textContent=user.email||''}}
+    updateGate();
   }
 
   function loadSdk(){return new Promise((resolve,reject)=>{if(window.supabase&&window.supabase.createClient)return resolve();const existing=document.querySelector('script[data-supabase-sdk]');if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return}const s=document.createElement('script');s.src=SDK;s.async=true;s.dataset.supabaseSdk='1';s.onload=resolve;s.onerror=reject;document.head.appendChild(s)})}
   async function fetchProfile(){if(!client||!user)return null;const {data}=await client.from('profiles').select('nickname').eq('user_id',user.id).maybeSingle();return data||null}
   async function applySession(session){
-    const old=user&&user.id;user=session&&session.user||null;profile=user?await fetchProfile():null;updateUI();
+    const old=user&&user.id;user=session&&session.user||null;if(user)setGuest(false);profile=user?await fetchProfile():null;updateUI();
     if(user){await migrateLegacy();await syncAll()}else emit('ielts-cloud-sync',{signedIn:false});
     if(old!==(user&&user.id))emit('ielts-auth-change',{user,profile});
   }
@@ -130,8 +164,17 @@
 
   async function init(){
     injectUI();
-    try{await loadSdk();if(!window.supabase||!window.supabase.createClient)throw new Error('Supabase SDK unavailable');client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data}=await client.auth.getSession();await applySession(data&&data.session);client.auth.onAuthStateChange((_event,session)=>setTimeout(()=>applySession(session),0));window.addEventListener('online',()=>syncAll());}
-    catch(e){console.warn('Cloud unavailable; local mode remains active.',e);emit('ielts-cloud-error',{error:e});updateUI()}
+    const authReturn=/access_token=|refresh_token=|type=signup|[?&]code=/.test(location.href);
+    try{
+      await loadSdk();if(!window.supabase||!window.supabase.createClient)throw new Error('Supabase SDK unavailable');
+      client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+      const {data}=await client.auth.getSession();await applySession(data&&data.session);
+      if(authReturn&&user)toast('邮箱验证成功 · 已自动登录');
+      client.auth.onAuthStateChange((_event,session)=>setTimeout(()=>applySession(session),0));
+      window.addEventListener('online',()=>syncAll());
+      window.addEventListener('focus',async()=>{if(!client)return;const {data}=await client.auth.getSession();await applySession(data&&data.session)});
+    }
+    catch(e){console.warn('Cloud unavailable; local mode remains active.',e);emit('ielts-cloud-error',{error:e});updateUI();updateGate()}
   }
   api.ready=new Promise(resolve=>{const run=()=>init().finally(resolve);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run()});
 })();

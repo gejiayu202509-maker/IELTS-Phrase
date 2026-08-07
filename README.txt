@@ -1,4 +1,4 @@
-IELTS Phrase PWA v6 · 账号与云同步版
+IELTS Phrase PWA v7 · 账号与云同步版
 
 本版新增：
 1. Supabase 邮箱+密码账号；昵称用于界面显示。
@@ -18,3 +18,15 @@ GitHub 更新：
 git add .
 git commit -m "Add Supabase accounts and linked wrong-answer review"
 git push
+
+
+v7 账号入口与邮箱确认修复：
+- 未登录首次进入：全屏选择 登录 / 注册 / 游客模式。
+- 游客模式仅本次浏览会话跳过入口；关闭后下次未登录会再次选择。
+- 注册确认邮件固定回跳到 GitHub Pages 首页，避免 Supabase 默认地址导致 404。
+- 邮箱验证成功后 Supabase 会在首页恢复登录会话，并显示“邮箱验证成功 · 已自动登录”。
+- 原右上角账号入口仍保留，游客可随时转为登录/注册。
+
+Supabase Authentication → URL Configuration 请确保：
+Site URL: https://gejiayu202509-maker.github.io/IELTS-Phrase/
+Redirect URLs 中也包含同一个完整地址。
