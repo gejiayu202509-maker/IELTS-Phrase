@@ -1,0 +1,18 @@
+{
+  "version": "v13.1",
+  "expressions": 50,
+  "scenarios": 1500,
+  "all_scenario_descriptions_have_chinese": true,
+  "unique_30_prompts_each": true,
+  "reset_visible_in_detail_and_training": true,
+  "writing_and_cloud_core_unchanged": {
+    "test.html": true,
+    "learn.html": true,
+    "cloud.js": true,
+    "data.js": true,
+    "pwa-update.js": true,
+    "supabase-schema.sql": true,
+    "supabase-v10-delete-fix.sql": true
+  },
+  "errors": []
+}
