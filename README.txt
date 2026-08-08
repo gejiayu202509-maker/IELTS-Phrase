@@ -39,3 +39,12 @@ v10: 修复云端历史记录删除后重新出现的问题；删除现在会二
 
 
 v11: 调整短语默写判定：任何拼写、词形或用词错误都计错；斜杠空格与括号等格式差异不扣分；连字符差异不扣分但会提醒标准写法。
+
+
+v12: 测试题量新增“自定义”；测试快捷键改为 Enter 提交/下一题，Shift+Enter 可在造句输入框换行。
+
+
+v12 history hotfix:
+- History save now waits for auth restoration before choosing the local account key.
+- Signed-in saves use a durable pending queue and cloud/local merge, so refresh cannot silently erase a just-saved record.
+- Enter submits; after grading, Enter advances to the next question. Shift+Enter inserts a newline in sentence mode.

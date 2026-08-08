@@ -36,6 +36,7 @@
   function readArray(key){const x=safeJson(localStorage.getItem(key)||'[]',[]);return Array.isArray(x)?x:[]}
   function writeArray(key,x){localStorage.setItem(key,JSON.stringify(Array.isArray(x)?x:[]))}
   function deletedKey(){return user?`ieltsPhraseDeletedHistory:${user.id}`:'ieltsPhraseDeletedHistory'}
+  function pendingHistoryKey(){return user?`ieltsPhrasePendingHistory:${user.id}`:'ieltsPhrasePendingHistory'}
   function deletedMasteredKey(){return user?`ieltsPhraseDeletedMastered:${user.id}`:'ieltsPhraseDeletedMastered'}
   function clearMasteredKey(){return user?`ieltsPhraseClearMastered:${user.id}`:'ieltsPhraseClearMastered'}
   function profileName(){return profile&&profile.nickname || user&&user.email&&user.email.split('@')[0] || '已登录'}
@@ -135,25 +136,30 @@
   async function saveHistory(record){
     if(!user||!client)return {ok:false,localOnly:true};
     const id=String(record&&record.id||'');
+    if(!id)return{ok:false,error:new Error('Missing history id')};
+    // 先写入一个持久的待同步队列。即使用户马上刷新/关页，这条记录也不会丢。
+    let pending=readArray(pendingHistoryKey()).filter(r=>r&&String(r.id)!==id);pending.push(record);writeArray(pendingHistoryKey(),pending);
     // Manual deletions are durable across devices. Before every upload, consult both
     // the local and cloud tombstone sets so a stale tab/device cannot resurrect a row.
-    if(id&&historyTombstoned(id))return{ok:false,deleted:true};
+    if(historyTombstoned(id)){writeArray(pendingHistoryKey(),pending.filter(r=>String(r.id)!==id));return{ok:false,deleted:true};}
     try{
-      if(id&&await cloudHistoryTombstoned(id)){addLocalHistoryTombstone(id);return{ok:false,deleted:true}}
-    }catch(e){console.warn('history tombstone check failed; refusing unsafe upload',e);return{ok:false,error:e}}
+      if(await cloudHistoryTombstoned(id)){addLocalHistoryTombstone(id);writeArray(pendingHistoryKey(),pending.filter(r=>String(r.id)!==id));return{ok:false,deleted:true}}
+    }catch(e){console.warn('history tombstone check failed; keeping pending save for retry',e);return{ok:false,error:e,retryQueued:true}}
     const {error}=await client.from('test_records').upsert(recordToRow(record),{onConflict:'user_id,client_id'});
-    if(error){console.warn('history sync failed',error);return{ok:false,error}}
-    // Close the race where the delete happens while this upsert is in flight.
-    if(id&&historyTombstoned(id)){
+    if(error){console.warn('history sync failed; keeping pending save',error);return{ok:false,error,retryQueued:true}}
+    if(historyTombstoned(id)){
       await client.from('test_records').delete().eq('user_id',user.id).eq('client_id',id);
+      writeArray(pendingHistoryKey(),pending.filter(r=>String(r.id)!==id));
       return{ok:false,deleted:true};
     }
+    writeArray(pendingHistoryKey(),pending.filter(r=>String(r.id)!==id));
     return{ok:true};
   }
   async function deleteHistory(clientId){
     if(!user||!client)return{ok:false,localOnly:true};
     const id=String(clientId);
     addLocalHistoryTombstone(id);
+    writeArray(pendingHistoryKey(),readArray(pendingHistoryKey()).filter(r=>r&&String(r.id)!==id));
     // Persist the deletion marker FIRST. The tiny tombstone row remains in Supabase,
     // while the actual test record is physically removed. Other devices see the marker
     // before uploading stale local history, so the record cannot come back.
@@ -202,7 +208,12 @@
         if(error)throw error;
       }
 
-      let localH=readArray(hk).filter(r=>r&&r.id&&!tombSet.has(String(r.id)));
+      // 合并正式本地历史 + 待同步队列。待同步记录优先，避免刷新时被空的云端结果覆盖。
+      const pendingKey=pendingHistoryKey(),pendingH=readArray(pendingKey).filter(r=>r&&r.id&&!tombSet.has(String(r.id)));
+      const localMap=new Map();
+      for(const r of readArray(hk))if(r&&r.id&&!tombSet.has(String(r.id)))localMap.set(String(r.id),r);
+      for(const r of pendingH)localMap.set(String(r.id),r);
+      let localH=[...localMap.values()];
       writeArray(hk,localH);
 
       // Physically remove any test row covered by a tombstone. Chunk the request so
@@ -214,14 +225,26 @@
       }
 
       // Only non-deleted local rows may be uploaded.
-      if(localH.length){const rows=localH.map(recordToRow);if(rows.length){const{error}=await client.from('test_records').upsert(rows,{onConflict:'user_id,client_id'});if(error)throw error}}
+      if(localH.length){
+        const rows=localH.map(recordToRow);
+        if(rows.length){
+          const{error}=await client.from('test_records').upsert(rows,{onConflict:'user_id,client_id'});
+          if(error)console.warn('history batch sync failed; keeping local/pending copies',error);
+          else writeArray(pendingKey,[]);
+        }
+      }
       const pendingClear=localStorage.getItem(clearMasteredKey());if(pendingClear){let q=client.from('mastered_phrases').delete().eq('user_id',user.id);if(pendingClear!=='*')q=q.eq('topic_id',pendingClear);const{error}=await q;if(!error)localStorage.removeItem(clearMasteredKey())}
       const mtomb=readArray(deletedMasteredKey());if(mtomb.length){for(const k of mtomb)await client.from('mastered_phrases').delete().eq('user_id',user.id).eq('phrase_key',String(k));writeArray(deletedMasteredKey(),[])}
       const mk=api.masteredStorageKey(),localM=readArray(mk);if(localM.length){const rows=localM.map(k=>{const p=String(k).split(':');return{user_id:user.id,phrase_key:String(k),topic_id:p[0]||'unknown',item_id:Number(p[1])||0}});await client.from('mastered_phrases').upsert(rows,{onConflict:'user_id,phrase_key'})}
       const [{data:tests,error:te},{data:mastered,error:me}]=await Promise.all([client.from('test_records').select('*').eq('user_id',user.id).order('completed_at',{ascending:false}),client.from('mastered_phrases').select('phrase_key').eq('user_id',user.id)]);
       if(te)throw te;if(me)throw me;
       const allTests=(tests||[]).filter(x=>!tombSet.has(String(x.client_id))),kept=allTests.filter(x=>x.keep_forever),regular=allTests.filter(x=>!x.keep_forever),excess=regular.slice(50);if(excess.length){for(const r of excess)await client.from('test_records').delete().eq('user_id',user.id).eq('id',r.id)}const visible=[...kept,...regular.slice(0,50)].sort((a,b)=>Date.parse(b.completed_at)-Date.parse(a.completed_at));
-      writeArray(hk,visible.map(rowToRecord));writeArray(mk,(mastered||[]).map(x=>x.phrase_key));
+      // 云端与本地做并集，而不是用云端整表覆盖本地。这样刚保存但尚未完成网络同步的记录刷新后仍然存在。
+      const merged=new Map();
+      for(const r of localH)if(r&&r.id&&!tombSet.has(String(r.id)))merged.set(String(r.id),r);
+      for(const r of visible.map(rowToRecord))if(r&&r.id&&!tombSet.has(String(r.id)))merged.set(String(r.id),r);
+      const mergedHistory=[...merged.values()].sort((a,b)=>(Number(b.savedAt)||Number(b.timestamp)||0)-(Number(a.savedAt)||Number(a.timestamp)||0));
+      writeArray(hk,mergedHistory);writeArray(mk,(mastered||[]).map(x=>x.phrase_key));
       emit('ielts-cloud-sync',{signedIn:true,manual,history:visible.length,mastered:(mastered||[]).length});
     }catch(e){console.warn('Cloud sync failed',e);emit('ielts-cloud-error',{error:e})}finally{loading=false;updateUI()}
   }
