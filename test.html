@@ -34,7 +34,7 @@
 <div class="settings">
 <div class="setting"><span class="setting-title">测试模式</span><label class="radio"><input type="radio" name="mode" value="phrase" checked><span><b>短语默写</b><small>显示中文，写出英文短语/搭配</small></span></label><label class="radio"><input type="radio" name="mode" value="sentence"><span><b>造句应用</b><small>用目标搭配写完整句，检查短语使用与基础语法</small></span></label></div>
 <div class="setting"><span class="setting-title">题量与顺序</span><select id="count"><option value="10">10 题</option><option value="20" selected>20 题</option><option value="30">30 题</option><option value="50">50 题</option><option value="all">全部选中短语</option></select><label class="check"><input id="shuffle" type="checkbox" checked>随机顺序</label></div>
-<div class="setting"><span class="setting-title">测试信息（可选）</span><input id="studentName" type="text" placeholder="姓名 / 班级（用于导出成绩）"><label class="check"><input id="strict" type="checkbox">严格拼写模式（轻微拼写错误也算错）</label></div>
+<div class="setting"><span class="setting-title">测试信息（可选）</span><input id="studentName" type="text" placeholder="姓名 / 班级（用于导出成绩）"><div style="margin-top:10px;font-size:12px;line-height:1.65;color:#667085"><b style="color:#344054">默写判定：</b>拼写、词形或用词有误一律计错；斜杠两侧空格、括号等格式差异不扣分；连字符差异不扣分，但会单独提醒标准写法。</div></div>
 </div>
 <div class="notice"><b>造句检查说明：</b>这是完全离线版本。新版会识别目标搭配的常见合理词形变化（如三单、过去式、过去分词、-ing、单复数、one's → their/his/her 等），并检查句首/标点、部分高频主谓一致与情态动词错误。需要时可点“中文翻译提示”做 IELTS 风格翻译练习。它适合背诵自测，但不等同于完整 AI 语法审阅。</div>
 <div class="startbar"><div id="summary" class="summary">尚未选择模块</div><button class="btn primary" id="start">开始测试</button></div>
@@ -69,14 +69,36 @@
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a};
   function lev(a,b){const m=a.length,n=b.length,d=Array.from({length:m+1},()=>Array(n+1).fill(0));for(let i=0;i<=m;i++)d[i][0]=i;for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n]}
   function stripParenthetical(s){return String(s||'').replace(/\s*\([^)]*\)/g,' ').replace(/\s+/g,' ').trim()}
+  function phraseCanon(s,{ignoreHyphen=false}={}){
+    let x=stripParenthetical(String(s||''))
+      .toLowerCase()
+      .replace(/[’‘]/g,"'")
+      .replace(/[–—]/g,'-')
+      .replace(/\.{2,}/g,' ')
+      .replace(/\s*\/\s*/g,' / ')
+      .replace(/[\[\]{}(),;:!?]/g,' ')
+      .replace(/\./g,' ');
+    if(ignoreHyphen)x=x.replace(/-/g,' ');
+    return x.replace(/\s+/g,' ').trim();
+  }
   function splitAlternatives(en){
-    const base=stripParenthetical(en), raw=base.split(/\s+\/\s+/).map(x=>x.trim()).filter(Boolean), out=[base,...raw];
+    const base=stripParenthetical(en), raw=base.split(/\s*\/\s*/).map(x=>x.trim()).filter(Boolean), out=[base,...raw];
     // air / water / soil pollution -> air pollution / water pollution / soil pollution
     if(raw.length>=3){const last=raw[raw.length-1].split(/\s+/);if(last.length===2&&raw.slice(0,-1).every(x=>x.split(/\s+/).length===1)){const suffix=last[1];raw.slice(0,-1).forEach(x=>out.push(x+' '+suffix));}}
     return [...new Set(out)];
   }
-  function variants(en){return [...new Set([normalize(en),...splitAlternatives(en).map(normalize)])]}
-  function phraseGrade(answer,en){const a=normalize(answer);if(!a)return{ok:false,near:false,sim:0,msg:'还没有输入答案。'};const vs=variants(en);if(vs.includes(a))return{ok:true,near:false,sim:1,msg:'完全正确。'};const sim=Math.max(...vs.map(v=>1-lev(a,v)/Math.max(a.length,v.length,1)));const near=sim>=.82;return{ok:false,near,sim,msg:near?'很接近：可能是拼写、冠词、单复数、连字符或括号说明有小误差。':'与标准搭配差距较大。'}}
+  function phraseVariants(en,opts){return [...new Set([en,...splitAlternatives(en)].map(x=>phraseCanon(x,opts)).filter(Boolean))]}
+  function phraseGrade(answer,en){
+    const a=phraseCanon(answer);
+    if(!a)return{ok:false,hyphenWarning:false,near:false,sim:0,msg:'还没有输入答案。'};
+    const strictVariants=phraseVariants(en);
+    if(strictVariants.includes(a))return{ok:true,hyphenWarning:false,near:false,sim:1,msg:'完全正确。'};
+    const aNoHyphen=phraseCanon(answer,{ignoreHyphen:true}), relaxedVariants=phraseVariants(en,{ignoreHyphen:true});
+    if(relaxedVariants.includes(aNoHyphen))return{ok:true,hyphenWarning:true,near:false,sim:1,msg:'答案正确；仅连字符写法与标准答案不同，请注意标准写法。'};
+    const sim=Math.max(...strictVariants.map(v=>1-lev(a,v)/Math.max(a.length,v.length,1)));
+    const near=sim>=.82;
+    return{ok:false,hyphenWarning:false,near,sim,msg:near?'答案很接近，但存在拼写、词形或用词差异；默写中仍按错题计。':'与标准搭配不一致；默写中按错题计。'};
+  }
   function isVerbPhrase(en){return verbStarts.has(normalize(en).split(' ')[0])||/^be\b/i.test(en)}
   function fillEllipsesEn(s){let i=0;const reps=(String(s).match(/\.\.\./g)||[]).length>1?['long-term public interests','short-term gains']:['this issue'];return String(s).replace(/\.\.\./g,()=>reps[i++]||'this issue')}
   function cleanedTarget(en){let p=splitAlternatives(en).filter(x=>!x.includes(' / '))[0]||stripParenthetical(en);return fillEllipsesEn(p.trim())}
@@ -151,7 +173,7 @@
     setup.classList.add('hidden');result.classList.add('hidden');quiz.classList.remove('hidden');showQ()
   }
   function showQ(){if(S.index>=S.queue.length)return showResult();S.answered=false;const {item,topic}=S.queue[S.index];$('feedback').className='feedback hidden';$('feedback').innerHTML='';$('nextrow').classList.add('hidden');$('answerInput').disabled=false;$('answerInput').value='';$('topic').textContent=topic.nameZh;$('modeBadge').textContent=S.mode==='phrase'?'短语默写':'造句应用';$('promptLabel').textContent=S.mode==='phrase'?'中文提示':'目标意思';$('question').textContent=item.zh;$('progressText').textContent=`${S.index+1} / ${S.queue.length}`;$('scoreText').textContent=`正确 ${S.correct}`;$('bar').style.width=`${(S.index/S.queue.length)*100}%`;if(S.mode==='sentence'){$('sentenceTask').classList.remove('hidden');$('sentenceTask').textContent=`请写一个与「${topic.nameZh}」相关的完整英文句子，自然使用你背过的目标搭配。三单、过去式、过去分词、-ing、单复数等合理词形变化都可以识别。`;$('hintWrap').classList.remove('hidden');$('sentenceHint').classList.add('hidden');$('sentenceHint').textContent='';$('hintBtn').textContent='💡 不会造句？给我一个中文翻译提示';$('answerInput').rows=5;$('answerInput').placeholder='例如写一个 IELTS 大作文风格的完整句子'}else{$('sentenceTask').classList.add('hidden');$('hintWrap').classList.add('hidden');$('sentenceHint').classList.add('hidden');$('answerInput').rows=3;$('answerInput').placeholder='写出对应的英文短语 / 搭配'};setTimeout(()=>$('answerInput').focus(),20)}
-  function submit(forceReveal=false){if(S.answered)return;const {item,topic}=S.queue[S.index],ans=$('answerInput').value.trim();let ok=false,cls='bad',html='';if(S.mode==='phrase'){const g=phraseGrade(ans,item.en),strict=$('strict').checked;ok=!forceReveal&&(g.ok||(!strict&&g.near));cls=forceReveal?'warn':(g.ok?'good':g.near&&!strict?'good':g.near?'warn':'bad');html=`<div class="fb-title">${forceReveal?'标准答案':g.ok?'✓ 完全正确':g.near&&!strict?'✓ 基本正确':g.near?'△ 很接近':'✕ 需要再记一下'}</div>${forceReveal?'':`<div>${esc(g.msg)}</div>`}<div style="margin-top:7px">标准：<span class="answer">${esc(item.en)}</span></div>`}else{const g=sentenceGrade(ans,item,topic);ok=!forceReveal&&g.ok;cls=forceReveal?'warn':g.ok?'good':g.has?'warn':'bad';html=`<div class="fb-title">${forceReveal?'参考写法':g.ok?'✓ 基础检查通过':g.has?'△ 已用到目标搭配，但句子需检查':'✕ 未识别到目标搭配'}</div><div>目标搭配：<span class="answer">${esc(item.en)}</span></div>${g.has&&g.inflected?'<div style="margin-top:6px;font-size:12px">✓ 已识别合理词形变化（如三单 / 过去式 / -ing / 单复数）。</div>':''}`;if(ans&&!forceReveal){html+=`<div class="score-grid"><div class="score-chip"><b>${g.grammar}/5</b><span>基础语法</span></div><div class="score-chip"><b>${g.phrase}/5</b><span>短语使用</span></div><div class="score-chip"><b>${g.natural}/5</b><span>句子完整度</span></div></div>`;html+=g.issues.length?`<ul>${g.issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<div style="margin-top:8px">离线规则暂未发现明显基础语法问题。</div>'}html+=`<div style="margin-top:8px">参考句：<span class="answer">${esc(g.reference)}</span></div><div style="margin-top:6px;font-size:12px;opacity:.8">注：参考句用于示范目标搭配，不代表唯一正确写法。</div>`}
+  function submit(forceReveal=false){if(S.answered)return;const {item,topic}=S.queue[S.index],ans=$('answerInput').value.trim();let ok=false,cls='bad',html='';if(S.mode==='phrase'){const g=phraseGrade(ans,item.en);ok=!forceReveal&&g.ok;cls=forceReveal?'warn':g.ok?(g.hyphenWarning?'warn':'good'):'bad';html=`<div class="fb-title">${forceReveal?'标准答案':g.ok?(g.hyphenWarning?'✓ 正确 · 注意连字符':'✓ 完全正确'):(g.near?'✕ 拼写/词形有误':'✕ 需要再记一下')}</div>${forceReveal?'':`<div>${esc(g.msg)}</div>`}<div style="margin-top:7px">标准：<span class="answer">${esc(item.en)}</span></div>`}else{const g=sentenceGrade(ans,item,topic);ok=!forceReveal&&g.ok;cls=forceReveal?'warn':g.ok?'good':g.has?'warn':'bad';html=`<div class="fb-title">${forceReveal?'参考写法':g.ok?'✓ 基础检查通过':g.has?'△ 已用到目标搭配，但句子需检查':'✕ 未识别到目标搭配'}</div><div>目标搭配：<span class="answer">${esc(item.en)}</span></div>${g.has&&g.inflected?'<div style="margin-top:6px;font-size:12px">✓ 已识别合理词形变化（如三单 / 过去式 / -ing / 单复数）。</div>':''}`;if(ans&&!forceReveal){html+=`<div class="score-grid"><div class="score-chip"><b>${g.grammar}/5</b><span>基础语法</span></div><div class="score-chip"><b>${g.phrase}/5</b><span>短语使用</span></div><div class="score-chip"><b>${g.natural}/5</b><span>句子完整度</span></div></div>`;html+=g.issues.length?`<ul>${g.issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<div style="margin-top:8px">离线规则暂未发现明显基础语法问题。</div>'}html+=`<div style="margin-top:8px">参考句：<span class="answer">${esc(g.reference)}</span></div><div style="margin-top:6px;font-size:12px;opacity:.8">注：参考句用于示范目标搭配，不代表唯一正确写法。</div>`}
     if(ok)S.correct++;else S.wrong.push({item,topic,answer:ans,mode:S.mode});S.outcomes.push({item,topic,answer:ans,mode:S.mode,ok});S.answered=true;$('answerInput').disabled=true;$('feedback').className='feedback '+cls;$('feedback').innerHTML=html;$('nextrow').classList.remove('hidden');$('scoreText').textContent=`正确 ${S.correct}`;$('bar').style.width=`${((S.index+1)/S.queue.length)*100}%`}
   function next(){S.index++;showQ()}
   function itemKey(topicId,itemId){return `${topicId}:${itemId}`}
