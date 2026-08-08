@@ -1,0 +1,84 @@
+{
+  "version": "V13.2 Speaking quality fix",
+  "validated_at": "2026-08-08",
+  "content": {
+    "expressions": 50,
+    "scenarios": 1500,
+    "exactly_30_scenarios_per_expression": true,
+    "chinese_scenario_prompts": 1500,
+    "expressions_with_30_unique_prompts": 50,
+    "expressions_with_30_unique_references": 50,
+    "reference_word_count_min": 5,
+    "reference_word_count_median": 15,
+    "reference_word_count_mean": 19.43,
+    "gutted_reference_min_words": 23,
+    "to_be_fair_reference_min_words": 18,
+    "scenario_type_counts": {
+      "生活场景": 1203,
+      "即时回应": 2,
+      "雅思口语": 126,
+      "对话": 157,
+      "语音消息": 6,
+      "机场通知": 1,
+      "颁奖现场": 1,
+      "赛后采访": 1,
+      "群聊回应": 1,
+      "邮件确认": 1,
+      "订单通知": 1
+    },
+    "reused_non_target_support_sentences_3plus": "0 groups (checked by qa_v13_2_final.py)",
+    "boilerplate_cleanup": "795 repeated support-sentence occurrences removed (265 distinct boilerplate sentences)"
+  },
+  "ui": {
+    "card_reset_visible_after_progress": "verified in speaking.html",
+    "detail_reset": "verified in speaking.html",
+    "practice_reset": "verified in speaking.html",
+    "latest_update_entry_on_homepage": "verified in index.html"
+  },
+  "code": {
+    "speaking_data_js_syntax": "PASS",
+    "speaking_inline_js_syntax": "PASS",
+    "index_inline_js_syntax": "PASS",
+    "service_worker_cache": "ielts-phrase-pwa-v13-2",
+    "service_worker_assets_exist": "PASS",
+    "local_http_smoke": "PASS: /, index.html, speaking.html, speaking-data.js, learn.html, test.html, sw.js, manifest.webmanifest"
+  },
+  "writing_core_files": {
+    "test.html": {
+      "baseline_sha256": "de8aff3cef261bbb06c77e37440ac4ed0f0309c25e304045e1173a1a810d6253",
+      "v13_2_sha256": "de8aff3cef261bbb06c77e37440ac4ed0f0309c25e304045e1173a1a810d6253",
+      "unchanged": true
+    },
+    "learn.html": {
+      "baseline_sha256": "91425e676ae58229afa404a4e9b80ef78e2edef57e55cf192682d64099033058",
+      "v13_2_sha256": "91425e676ae58229afa404a4e9b80ef78e2edef57e55cf192682d64099033058",
+      "unchanged": true
+    },
+    "cloud.js": {
+      "baseline_sha256": "86141ee1c2b92dbc12d40bdbdb3ea5207cc87c6002359232d99065421ad2ee2d",
+      "v13_2_sha256": "86141ee1c2b92dbc12d40bdbdb3ea5207cc87c6002359232d99065421ad2ee2d",
+      "unchanged": true
+    },
+    "data.js": {
+      "baseline_sha256": "e1f5609e910e888641c1677fa1546a284b1dbf93784625419458e81683556c20",
+      "v13_2_sha256": "e1f5609e910e888641c1677fa1546a284b1dbf93784625419458e81683556c20",
+      "unchanged": true
+    },
+    "pwa-update.js": {
+      "baseline_sha256": "8ff63727df907fda58e9c1c478570d7926ac03e3bece7fe9cc87f69d800c9f2d",
+      "v13_2_sha256": "8ff63727df907fda58e9c1c478570d7926ac03e3bece7fe9cc87f69d800c9f2d",
+      "unchanged": true
+    },
+    "supabase-schema.sql": {
+      "baseline_sha256": "12f450d9dcd8e3ebe5e32e48ab7cdf3c7a1409019e520c516fc69399ba03f843",
+      "v13_2_sha256": "12f450d9dcd8e3ebe5e32e48ab7cdf3c7a1409019e520c516fc69399ba03f843",
+      "unchanged": true
+    },
+    "supabase-v10-delete-fix.sql": {
+      "baseline_sha256": "b48da07f01f25f8cd6503220e9321c801dbe0b931554e71e253dee10275a8eee",
+      "v13_2_sha256": "b48da07f01f25f8cd6503220e9321c801dbe0b931554e71e253dee10275a8eee",
+      "unchanged": true
+    }
+  },
+  "qa_result": "PASS: 0 basic issues; 0 repeated non-target support-sentence groups"
+}

@@ -63,3 +63,10 @@ GitHub 更新：
 git add .
 git commit -m "Add speaking expression and scenario training"
 git push
+
+
+V13.2 Speaking quality fix
+- 1500 scenarios audited; Chinese scenario prompts + contextual English references.
+- Removed generic one-answer-fits-all reference patterns and visible authoring instructions.
+- Dialogue/voice/interview/announcement styles retained where natural.
+- Per-expression reset is visible on cards, details, and practice page.

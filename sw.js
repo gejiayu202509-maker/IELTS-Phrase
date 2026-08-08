@@ -1,4 +1,4 @@
-const CACHE='ielts-phrase-pwa-v13-1';
+const CACHE='ielts-phrase-pwa-v13-2';
 const ASSETS=['./','./index.html','./learn.html','./test.html','./speaking.html','./speaking-data.js','./data.js','./cloud.js','./pwa-update.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png','./offline.html'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));});
 self.addEventListener('message',e=>{if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();});
