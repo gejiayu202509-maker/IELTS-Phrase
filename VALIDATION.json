@@ -1,0 +1,21 @@
+{
+  "version": "v13-speaking",
+  "expressions": 50,
+  "scenario_sets": 50,
+  "scenarios_per_expression": [
+    30
+  ],
+  "total_scenarios": 1500,
+  "duplicate_prompt_sets": [],
+  "required_files": [
+    "index.html",
+    "learn.html",
+    "test.html",
+    "speaking.html",
+    "speaking-data.js",
+    "cloud.js",
+    "data.js",
+    "sw.js",
+    "manifest.webmanifest"
+  ]
+}

@@ -1,5 +1,5 @@
-const CACHE='ielts-phrase-pwa-v12-historyfix';
-const ASSETS=['./','./index.html','./learn.html','./test.html','./data.js','./cloud.js','./pwa-update.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png','./offline.html'];
+const CACHE='ielts-phrase-pwa-v13-speaking';
+const ASSETS=['./','./index.html','./learn.html','./test.html','./speaking.html','./speaking-data.js','./data.js','./cloud.js','./pwa-update.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png','./offline.html'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));});
 self.addEventListener('message',e=>{if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

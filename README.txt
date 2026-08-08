@@ -48,3 +48,18 @@ v12 history hotfix:
 - History save now waits for auth restoration before choosing the local account key.
 - Signed-in saves use a durable pending queue and cloud/local merge, so refresh cannot silently erase a just-saved record.
 - Enter submits; after grading, Enter advances to the next question. Shift+Enter inserts a newline in sentence mode.
+
+
+
+v13 · Speaking Scenario Bank
+- 首页新增“口语场景训练”入口。
+- Expression Bank 共 50 个口语表达；每个表达 30 个场景，共 1500 个。
+- 每轮优先随机抽取尚未完成的场景；30 个全部完成后进入随机复练。
+- 场景进度保存在当前设备浏览器，并按当前登录用户区分；本版不新增 Supabase 表，因此不需要运行 SQL。
+- 首页底部新增“最近更新”入口，后续更新可在此记录最近一次优化。
+- 原 v12 写作测试、自定义题量、Enter 快捷键和历史记录保存修复全部保留。
+
+GitHub 更新：
+git add .
+git commit -m "Add speaking expression and scenario training"
+git push
