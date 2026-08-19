@@ -35,6 +35,8 @@
   function safeJson(s,fallback){try{return JSON.parse(s)}catch(_){return fallback}}
   function readArray(key){const x=safeJson(localStorage.getItem(key)||'[]',[]);return Array.isArray(x)?x:[]}
   function writeArray(key,x){localStorage.setItem(key,JSON.stringify(Array.isArray(x)?x:[]))}
+  function masteryCoveredByClear(k,scope){return !!scope&&(scope==='*'||String(k).startsWith(String(scope)+':'))}
+  function mergeMasteryArrays(localKeys,cloudKeys,tombKeys=[],clearScope=null){const tomb=new Set((tombKeys||[]).map(String)),local=(localKeys||[]).map(String).filter(k=>!tomb.has(k)),cloud=(cloudKeys||[]).map(String).filter(k=>!tomb.has(k)&&!masteryCoveredByClear(k,clearScope));return[...new Set([...local,...cloud])]}
   function deletedKey(){return user?`ieltsPhraseDeletedHistory:${user.id}`:'ieltsPhraseDeletedHistory'}
   function pendingHistoryKey(){return user?`ieltsPhrasePendingHistory:${user.id}`:'ieltsPhrasePendingHistory'}
   function deletedMasteredKey(){return user?`ieltsPhraseDeletedMastered:${user.id}`:'ieltsPhraseDeletedMastered'}
@@ -175,10 +177,18 @@
   async function setMastered(phraseKey,topicId,itemId,mastered){
     if(!user||!client)return{ok:false,localOnly:true};const k=String(phraseKey);
     if(mastered){const tomb=readArray(deletedMasteredKey()).filter(x=>String(x)!==k);writeArray(deletedMasteredKey(),tomb);const {error}=await client.from('mastered_phrases').upsert({user_id:user.id,phrase_key:k,topic_id:String(topicId),item_id:Number(itemId)||0},{onConflict:'user_id,phrase_key'});return{ok:!error,error}}
-    const {error}=await client.from('mastered_phrases').delete().eq('user_id',user.id).eq('phrase_key',k);if(error){const tomb=readArray(deletedMasteredKey());if(!tomb.includes(k)){tomb.push(k);writeArray(deletedMasteredKey(),tomb)}}return{ok:!error,error};
+    // Persist the delete intent before the network call. If the page refreshes while the
+    // request is in flight, the next sync still knows this phrase must stay unmastered.
+    const tomb=readArray(deletedMasteredKey()).map(String);if(!tomb.includes(k)){tomb.push(k);writeArray(deletedMasteredKey(),tomb)}
+    const {error}=await client.from('mastered_phrases').delete().eq('user_id',user.id).eq('phrase_key',k);
+    if(!error)writeArray(deletedMasteredKey(),readArray(deletedMasteredKey()).map(String).filter(x=>x!==k));
+    return{ok:!error,error};
   }
   async function clearMastered(topicId){
-    if(!user||!client)return{ok:false,localOnly:true};let q=client.from('mastered_phrases').delete().eq('user_id',user.id);if(topicId)q=q.eq('topic_id',String(topicId));const{error}=await q;if(error){localStorage.setItem(clearMasteredKey(),topicId?String(topicId):'*')}else localStorage.removeItem(clearMasteredKey());return{ok:!error,error};
+    if(!user||!client)return{ok:false,localOnly:true};const scope=topicId?String(topicId):'*';
+    // Save the clear intent first for the same refresh/interruption reason as single deletes.
+    localStorage.setItem(clearMasteredKey(),scope);
+    let q=client.from('mastered_phrases').delete().eq('user_id',user.id);if(topicId)q=q.eq('topic_id',String(topicId));const{error}=await q;if(!error)localStorage.removeItem(clearMasteredKey());return{ok:!error,error};
   }
   async function cleanupExpired(){if(!user||!client)return;await client.from('test_records').delete().eq('user_id',user.id).eq('keep_forever',false).lt('expires_at',new Date().toISOString())}
   async function migrateLegacy(){
@@ -233,19 +243,26 @@
           else writeArray(pendingKey,[]);
         }
       }
-      const pendingClear=localStorage.getItem(clearMasteredKey());if(pendingClear){let q=client.from('mastered_phrases').delete().eq('user_id',user.id);if(pendingClear!=='*')q=q.eq('topic_id',pendingClear);const{error}=await q;if(!error)localStorage.removeItem(clearMasteredKey())}
-      const mtomb=readArray(deletedMasteredKey());if(mtomb.length){for(const k of mtomb)await client.from('mastered_phrases').delete().eq('user_id',user.id).eq('phrase_key',String(k));writeArray(deletedMasteredKey(),[])}
-      const mk=api.masteredStorageKey(),localM=readArray(mk);if(localM.length){const rows=localM.map(k=>{const p=String(k).split(':');return{user_id:user.id,phrase_key:String(k),topic_id:p[0]||'unknown',item_id:Number(p[1])||0}});await client.from('mastered_phrases').upsert(rows,{onConflict:'user_id,phrase_key'})}
+      // Mastery sync is local-first. A slow/offline cloud write must never erase a mastery
+      // that was already saved successfully in this browser and then refreshed.
+      const pendingClear=localStorage.getItem(clearMasteredKey()),clearScope=pendingClear;
+      if(pendingClear){let q=client.from('mastered_phrases').delete().eq('user_id',user.id);if(pendingClear!=='*')q=q.eq('topic_id',pendingClear);const{error}=await q;if(!error)localStorage.removeItem(clearMasteredKey());else console.warn('mastery clear sync failed; keeping clear marker',error)}
+      const mtomb=readArray(deletedMasteredKey()).map(String),masteryBlocked=new Set(mtomb),remainingMasteryTomb=[];
+      if(mtomb.length){for(const k of mtomb){const{error}=await client.from('mastered_phrases').delete().eq('user_id',user.id).eq('phrase_key',k);if(error){remainingMasteryTomb.push(k);console.warn('mastery delete sync failed; keeping tombstone',k,error)}}writeArray(deletedMasteredKey(),remainingMasteryTomb)}
+      const mk=api.masteredStorageKey(),localM=readArray(mk).map(String).filter(k=>!masteryBlocked.has(k));
+      if(localM.length){const rows=localM.map(k=>{const p=String(k).split(':');return{user_id:user.id,phrase_key:String(k),topic_id:p[0]||'unknown',item_id:Number(p[1])||0}});const{error}=await client.from('mastered_phrases').upsert(rows,{onConflict:'user_id,phrase_key'});if(error)console.warn('mastery batch sync failed; keeping local mastery as source of truth',error)}
       const [{data:tests,error:te},{data:mastered,error:me}]=await Promise.all([client.from('test_records').select('*').eq('user_id',user.id).order('completed_at',{ascending:false}),client.from('mastered_phrases').select('phrase_key').eq('user_id',user.id)]);
       if(te)throw te;if(me)throw me;
       const allTests=(tests||[]).filter(x=>!tombSet.has(String(x.client_id))),kept=allTests.filter(x=>x.keep_forever),regular=allTests.filter(x=>!x.keep_forever),excess=regular.slice(50);if(excess.length){for(const r of excess)await client.from('test_records').delete().eq('user_id',user.id).eq('id',r.id)}const visible=[...kept,...regular.slice(0,50)].sort((a,b)=>Date.parse(b.completed_at)-Date.parse(a.completed_at));
-      // 云端与本地做并集，而不是用云端整表覆盖本地。这样刚保存但尚未完成网络同步的记录刷新后仍然存在。
+      // Cloud history and mastery are merged with durable local state instead of replacing it.
       const merged=new Map();
       for(const r of localH)if(r&&r.id&&!tombSet.has(String(r.id)))merged.set(String(r.id),r);
       for(const r of visible.map(rowToRecord))if(r&&r.id&&!tombSet.has(String(r.id)))merged.set(String(r.id),r);
       const mergedHistory=[...merged.values()].sort((a,b)=>(Number(b.savedAt)||Number(b.timestamp)||0)-(Number(a.savedAt)||Number(a.timestamp)||0));
-      writeArray(hk,mergedHistory);writeArray(mk,(mastered||[]).map(x=>x.phrase_key));
-      emit('ielts-cloud-sync',{signedIn:true,manual,history:visible.length,mastered:(mastered||[]).length});
+      const cloudM=(mastered||[]).map(x=>String(x.phrase_key));
+      const mergedMastery=mergeMasteryArrays(localM,cloudM,mtomb,clearScope);
+      writeArray(hk,mergedHistory);writeArray(mk,mergedMastery);
+      emit('ielts-cloud-sync',{signedIn:true,manual,history:visible.length,mastered:mergedMastery.length});
     }catch(e){console.warn('Cloud sync failed',e);emit('ielts-cloud-error',{error:e})}finally{loading=false;updateUI()}
   }
 
