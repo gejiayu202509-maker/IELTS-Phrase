@@ -215,7 +215,7 @@
   function pruneHistory(records,now=Date.now()){
     const alive=(records||[]).map(r=>normalizeHistoryRecord(r,now)).filter(Boolean).filter(r=>r.keepForever||!r.expiresAt||r.expiresAt>now),kept=alive.filter(r=>r.keepForever),regular=alive.filter(r=>!r.keepForever).sort((a,b)=>(b.savedAt||0)-(a.savedAt||0)).slice(0,MAX_REGULAR_HISTORY);return [...kept,...regular].sort((a,b)=>(b.savedAt||b.timestamp||0)-(a.savedAt||a.timestamp||0));
   }
-  function writeHistory(records){localStorage.setItem(historyKey(),JSON.stringify(pruneHistory(records)))}
+  function writeHistory(records){try{localStorage.setItem(historyKey(),JSON.stringify(pruneHistory(records)));return true}catch(e){console.error('history write failed',e);return false}}
   function readHistory(){try{const key=historyKey(),raw=JSON.parse(localStorage.getItem(key)||'[]'),original=Array.isArray(raw)?raw:[],clean=pruneHistory(original);if(JSON.stringify(clean)!==JSON.stringify(original))localStorage.setItem(key,JSON.stringify(clean));return clean}catch(e){console.error(e);return[]}}
   async function ensureCloudReady(){try{if(window.IELTSCloud&&window.IELTSCloud.ready)await window.IELTSCloud.ready}catch(e){console.warn('cloud init wait failed',e)}}
   async function saveHistory(r){
@@ -223,7 +223,7 @@
       // 等 Supabase 恢复完当前会话后再决定本地存储 key，避免记录误存到游客 key，刷新后看起来像被删掉。
       await ensureCloudReady();
       const now=Date.now(),record=normalizeHistoryRecord(r,now),h=readHistory().filter(x=>x&&String(x.id)!==String(record.id));
-      h.unshift(record);writeHistory(h);
+      h.unshift(record);if(!writeHistory(h))return {ok:false,error:new Error('local history write failed')};
       if(window.IELTSCloud&&window.IELTSCloud.isSignedIn()){
         const cr=await window.IELTSCloud.saveHistory(record);
         return {ok:true,cloud:!!(cr&&cr.ok),record};
@@ -255,12 +255,12 @@
     try{
       await ensureCloudReady();
       const h=readHistory(),r=h.find(x=>String(x.id)===String(id));if(!r)return toast('没有找到这条历史记录');
-      r.keepForever=!r.keepForever;r.expiresAt=r.keepForever?null:Date.now()+HISTORY_TTL;writeHistory(h);renderHistory();
+      r.keepForever=!r.keepForever;r.expiresAt=r.keepForever?null:Date.now()+HISTORY_TTL;if(!writeHistory(h))return toast('修改失败：浏览器未能保存本机记录');renderHistory();
       if(window.IELTSCloud&&window.IELTSCloud.isSignedIn()){const cr=await window.IELTSCloud.saveHistory(r);if(!cr||!cr.ok)toast('保留状态已存在本机，云端将在下次同步时重试');else toast(r.keepForever?'已设为长期保留':'已取消长期保留，将从今天起保存 30 天')}
       else toast(r.keepForever?'已设为长期保留':'已取消长期保留，将从今天起保存 30 天');
     }catch(e){console.error(e);toast('修改保留状态失败')}
   }
-  async function deleteHistory(id){const h=readHistory(),r=h.find(x=>String(x.id)===String(id));if(!r)return toast('没有找到这条历史记录');if(!confirm(`确定删除这条测试记录吗？${Array.isArray(r.wrong)&&r.wrong.length?' 删除后相关错题复习进度也会一起删除。':''}`))return;try{writeHistory(h.filter(x=>String(x.id)!==String(id)));renderHistory();if(window.IELTSCloud&&window.IELTSCloud.isSignedIn()){toast('正在从账号中删除…');const res=await window.IELTSCloud.deleteHistory(id);if(res&&res.ok){await window.IELTSCloud.syncAll();renderHistory();toast('历史记录已删除，并已从云端同步移除')}else{renderHistory();toast('已从本机删除；云端删除将在下次联网同步时自动重试')}}else toast('历史记录已删除')}catch(e){console.error(e);renderHistory();toast('删除过程中出现问题；系统会在下次同步时继续处理')}}
+  async function deleteHistory(id){const h=readHistory(),r=h.find(x=>String(x.id)===String(id));if(!r)return toast('没有找到这条历史记录');if(!confirm(`确定删除这条测试记录吗？${Array.isArray(r.wrong)&&r.wrong.length?' 删除后相关错题复习进度也会一起删除。':''}`))return;try{if(!writeHistory(h.filter(x=>String(x.id)!==String(id))))return toast('删除失败：浏览器未能更新本机记录');renderHistory();if(window.IELTSCloud&&window.IELTSCloud.isSignedIn()){toast('正在从账号中删除…');const res=await window.IELTSCloud.deleteHistory(id);if(res&&res.ok){await window.IELTSCloud.syncAll();renderHistory();toast('历史记录已删除，并已从云端同步移除')}else{renderHistory();toast('已从本机删除；云端删除将在下次联网同步时自动重试')}}else toast('历史记录已删除')}catch(e){console.error(e);renderHistory();toast('删除过程中出现问题；系统会在下次同步时继续处理')}}
   function renderHistory(){
     const el=$('historyList'),h=readHistory();if(!h.length){el.innerHTML='<div style="color:#98a2b3;font-size:12px">还没有已保存的测试记录。只有完整做完一轮并点击「保存本轮记录」后，才会出现在这里。</div>';return}
     el.innerHTML=h.map((r,idx)=>{const wrongCount=Array.isArray(r.wrong)?r.wrong.length:null,pending=wrongCount===null?null:pendingWrong(r).length,passed=wrongCount===null?null:wrongCount-pending,canReview=pending>0&&queueFromHistory(r).length>0,id=r.id||`legacy-${idx}`,ret=retentionText(r);let reviewStatus='';if(wrongCount===0)reviewStatus='<span style="color:#16794a;font-weight:800">✓ 无错题</span>';else if(wrongCount===null)reviewStatus='<span style="color:#98a2b3">旧版记录无法复习</span>';else if(pending===0)reviewStatus=`<span style="color:#16794a;font-weight:800">✓ ${wrongCount}/${wrongCount} 错题已复习完成</span>`;else reviewStatus=`<button class="btn small primary review-history" data-history-id="${esc(String(id))}">${passed?`继续复习 (${pending})`:`复习错题 (${pending})`}</button>`;const keepBtn=`<button class="btn small ${r.keepForever?'keep-active':'ghost'} keep-history" data-history-id="${esc(String(id))}">${r.keepForever?'取消长期保留':'长期保留'}</button>`;const reviewMeta=wrongCount===null?'旧版记录未保存错题详情':wrongCount===0?'错题 0':pending===0?`原始错题 ${wrongCount} · 已全部复习完成`:`原始错题 ${wrongCount} · 已复习通过 ${passed} · 待复习 ${pending}`;const lastReview=Array.isArray(r.reviewLog)&&r.reviewLog.length?` · 最近复习 ${esc(r.reviewLog[r.reviewLog.length-1].date||'')}`:'';return `<div class="history-row"><div class="history-main"><div class="history-title">${esc(r.date||'历史记录')}${r.name?' · '+esc(r.name):''} · <b>${Number(r.correct)||0}/${Number(r.total)||0} (${Number(r.rate)||0}%)</b></div><div class="history-meta">${esc((r.modules||[]).join(' + ')||'未记录模块')} · ${r.mode==='sentence'?'造句应用':'短语默写'} · ${reviewMeta}${lastReview}</div><div class="history-expiry ${ret.keep?'keep':''}">${esc(ret.label)}</div></div><div class="history-actions">${reviewStatus}${keepBtn}<button class="btn small danger delete-history" data-history-id="${esc(String(id))}">删除</button></div></div>`}).join('');
